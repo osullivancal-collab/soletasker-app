@@ -3,6 +3,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const TODAY = new Date().toISOString().split("T")[0];
 const TEAM_MEMBERS = ["Me", "VA", "Jake Holden", "Matt Reeves"];
+// mailto body builder — raw newlines, browser handles encoding
+const mb=(...lines)=>encodeURIComponent(lines.filter(l=>l!=null).join("\n\n").replace(/Regards,%0A/g,"Regards,\n"));
 
 const DAILY_QUOTES = [
   "A job written down is a job half done.",
@@ -40,49 +42,32 @@ const DAILY_QUOTE = DAILY_QUOTES[new Date(TODAY).getDate() % DAILY_QUOTES.length
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED_JOBS = [
-  { id:"J001", ref:"J-001", name:"Webb Rewire", client:"Marcus Webb", address:"14 Birchwood Ave, Northside", phone:"07812 441 223", email:"m.webb@email.com", scope:"Full house rewire. Consumer unit upgrade to RCBO board. Loft circuit to be added.", notes:"", notesLog:[{id:"NL001",text:"Check loft access — may need scaffolding for upper circuits.",date:"2026-04-06",time:"08:30",via:"manual"}], status:"active", checkboxes:{booked:true,cert:false,invoice:false,completed:false}, certUploaded:false, invoiceUploaded:false, tasks:["T001","T002"], scopeItems:[{id:"SI001",text:"Strip existing wiring — ground floor",done:false},{id:"SI002",text:"Install new consumer unit",done:true},{id:"SI003",text:"First fix — ground floor circuits",done:true},{id:"SI004",text:"First fix — upper floor circuits",done:false},{id:"SI005",text:"Loft circuit installation",done:false}], unfinished:[{id:"UF001",text:"Confirm loft hatch dimensions before next visit",done:false}], memos:["M001"], photos:[], date:"2026-04-07", value:8500 },
-  { id:"J002", ref:"J-002", name:"Hoult Fault Find", client:"Sandra Hoult", address:"7 Elmfield Close, Westgate", phone:"07911 002 334", email:"sandrah@email.co.uk", scope:"Intermittent trip on ring main. Investigate sockets upstairs.", notes:"Call ahead — she works from home.", notesLog:[], unfinished:[], memos:[], photos:[], date:"2026-04-09", value:650 },
-  { id:"J003", ref:"J-003", name:"Hargreaves New Build", client:"Hargreaves Build Co.", address:"Plot 12, New Mill Rd, Bromley", phone:"07812 334 211", email:"dave@hargreaves.co.uk", scope:"First fix start. 4-bed new build. Full electrical installation.", notes:"Builder contact: Dave. Site opens 7:30am.", notesLog:[], unfinished:[], memos:[], photos:[], date:"2026-04-14", value:28000 },
-  { id:"J004", ref:"J-004", name:"Malone Consumer Unit", client:"Terry Malone", address:"22 Station Rd, Lowmoor", phone:"07700 900 123", email:"terry.m@gmail.com", scope:"Replace old rewireable fuse board with modern RCBO consumer unit.", notes:"Completed. EIC issued.", notesLog:[], unfinished:[], memos:[], photos:[], date:"2026-03-28", value:2200 },
+  { id:"J001", ref:"J-001", name:"Webb Rewire", client:"Marcus Webb", address:"14 Birchwood Ave, Northside", phone:"07812 441 223", email:"m.webb@email.com", scope:"Full house rewire. Consumer unit upgrade to RCBO board. Loft circuit to be added.", notes:"", notesLog:[{id:"NL001",text:"Check loft access — may need scaffolding for upper circuits.",date:"2026-04-06",time:"08:30",via:"manual",photos:[]}], status:"active", checkboxes:{booked:true,cert:false,invoice:false,completed:false}, certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"", tasks:["T001","T002"], scopeItems:[{id:"SI001",text:"Strip existing wiring — ground floor",done:false},{id:"SI002",text:"Install new consumer unit",done:true},{id:"SI003",text:"First fix — ground floor circuits",done:true},{id:"SI004",text:"First fix — upper floor circuits",done:false},{id:"SI005",text:"Loft circuit installation",done:false}], unfinished:[{id:"UF001",text:"Confirm loft hatch dimensions before next visit",done:false}], memos:[], photos:[], date:"2026-04-07", value:8500 },
+  { id:"J004", ref:"J-004", name:"Malone Consumer Unit", client:"Terry Malone", address:"22 Station Rd, Lowmoor", phone:"07700 900 123", email:"terry.m@gmail.com", scope:"Replace old rewireable fuse board with modern RCBO consumer unit.", notes:"", notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}], unfinished:[], memos:[], photos:[], date:"2026-03-28", value:2200, status:"completed", checkboxes:{booked:true,cert:true,invoice:true,completed:true}, certUploaded:true,invoiceUploaded:true,certNotes:"",invNotes:"", tasks:[], scopeItems:[{id:"SI030",text:"Remove old fuse board",done:true},{id:"SI031",text:"Install new RCBO board",done:true},{id:"SI032",text:"Test all circuits",done:true},{id:"SI033",text:"Issue EIC certificate",done:true}], notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}] },
 ];
 
 const SEED_TASKS = [
-  { id:"T001", title:"Order cable for Webb rewire", jobId:"J001", priority:"P1", assignedTo:"Me", done:false, dueDate:"2026-04-06", notes:"2.5mm twin & earth x4 drums, 6mm for cooker" },
-  { id:"T002", title:"Submit Part P notification — Webb", jobId:"J001", priority:"P1", assignedTo:"Me", done:false, dueDate:"2026-04-08", notes:"" },
-  { id:"T003", title:"Call Sandra re: access time", jobId:"J002", priority:"P2", assignedTo:"Me", done:false, dueDate:"2026-04-07", notes:"" },
-  { id:"T004", title:"Chase Hargreaves quote sign-off", jobId:"J003", priority:"P2", assignedTo:"VA", done:false, dueDate:"2026-04-10", notes:"" },
-  { id:"T005", title:"Renew van insurance", jobId:null, priority:"P1", assignedTo:"Me", done:false, dueDate:"2026-04-15", notes:"Compare on Go Compare first" },
-  { id:"T006", title:"File April receipts", jobId:null, priority:"P3", assignedTo:"VA", done:true, dueDate:"2026-04-04", notes:"" },
-  { id:"T007", title:"Book inspection — Malone EICR", jobId:"J004", priority:"P2", assignedTo:"Me", done:true, dueDate:"2026-04-03", notes:"" },
-  { id:"T008", title:"Clean van", jobId:null, priority:"P3", assignedTo:"Me", done:false, dueDate:"2026-04-11", notes:"" },
-  { id:"T009", title:"Send invoice — Johnson", jobId:null, priority:"P1", assignedTo:"VA", done:false, dueDate:"2026-04-06", notes:"" },
+  { id:"T001", title:"Order cable for Webb rewire", jobId:"J001", priority:"P1", assignedTo:"Me", done:false, dueDate:new Date().toISOString().split("T")[0], notes:"" },
+  { id:"T002", title:"Submit Part P notification — Webb", jobId:"J001", priority:"P1", assignedTo:"Me", done:false, dueDate:new Date(Date.now()+2*86400000).toISOString().split("T")[0], notes:"" },
 ];
 
 // Reminders = time-based items, can exist without a job, optional date
 const SEED_REMINDERS = [
-  { id:"R001", title:"Ring Marcus re: loft socket — single or double?", text:"Ring Marcus about whether he wants the loft socket double or single — forgot to ask on site", notes:"", dueDate:"2026-04-07", dueTime:"09:00", linkedJobId:"J001", done:false, promoted:false },
-  { id:"R002", title:"Follow up Sandra re: outdoor socket quote", text:"Sandra mentioned she might want an outdoor socket fitted at the same time — worth quoting", notes:"", dueDate:"2026-04-09", dueTime:"", linkedJobId:"J002", done:false, promoted:false },
-  { id:"R003", title:"Check Fluke calibration cert before Hargreaves", text:"Need to check if calibration cert for Fluke is still valid before the Hargreaves EICR", notes:"", dueDate:"2026-04-13", dueTime:"", linkedJobId:"J003", done:false, promoted:false },
-  { id:"R004", title:"Pick up 20mm conduit — before Thursday", text:"Pick up more 20mm conduit from the trade counter before Thursday", notes:"", dueDate:"2026-04-10", dueTime:"", linkedJobId:null, done:false, promoted:false },
+  { id:"R001", title:"Ring Marcus re: loft socket — single or double?", text:"Ring Marcus about whether he wants the loft socket double or single — forgot to ask on site", notes:"", dueDate:new Date(Date.now()+86400000).toISOString().split("T")[0], dueTime:"09:00", linkedJobId:"J001", done:false, promoted:false },
 ];
 
 const SEED_ASSETS = [
   { id:"AS001", name:"Transit Custom LWB", type:"van", rego:"EL22 XRT", notes:"Service due May 2026. MOT: Aug 2026.", serviceReminder:"May 2026" },
   { id:"AS002", name:"Fluke 1664FC MFT", type:"tool", rego:"", notes:"Calibration due June 2026. Serial: FL-9921-X.", serviceReminder:"June 2026" },
-  { id:"AS003", name:"18V Makita Drill", type:"tool", rego:"", notes:"Spare battery ordered. Charger faulty — replace.", serviceReminder:"" },
-  { id:"AS004", name:"6ft Ladder", type:"tool", rego:"", notes:"Annual inspection done March 2026.", serviceReminder:"March 2027" },
 ];
 
 const SEED_WORKERS = [
-  { id:"W001", name:"Jake Holden", role:"Lead Electrician", notes:"10yrs experience. Reliable.", hours:[{date:"2026-04-05",hrs:8,jobId:"J001"},{date:"2026-04-04",hrs:7,jobId:"J002"}] },
-  { id:"W002", name:"Matt Reeves", role:"Apprentice", notes:"2nd year. Needs supervision on board work.", hours:[{date:"2026-04-05",hrs:8,jobId:"J001"}] },
-  { id:"W003", name:"VA", role:"Virtual Assistant", notes:"Admin, invoicing, chasing quotes.", hours:[] },
+  { id:"W001", name:"Jake Holden", role:"Lead Electrician", notes:"10yrs experience. Reliable.", hours:[{date:"2026-04-05",hrs:8,jobId:"J001"}] },
 ];
 
 
 const PENDING_INTAKE = [
   { id:"PI001", name:"Tamara Nguyen", address:"23 Mayfield St, Kogarah", phone:"+61 400 123 456", email:"tamara@example.com", scope:"Install new power points in living room, kitchen, and garage.", submitted:"2026-04-06" },
-  { id:"PI002", name:"Damien Douglas", address:"8 Maple Ave, Westside", phone:"07923 441 002", email:"d.douglas@email.com", scope:"Kitchen light fitting replacement and outdoor socket install.", submitted:"2026-04-05" },
 ];
 
 const ACCOUNT = { name:"Jason Miller", trade:"Electrician", company:"Miller Electrical Services", email:"jason@millerelectrical.co.uk", phone:"07711 234 567", regNo:"SELECT-2234", address:"Unit 4, Anvil Works, Northside", logoUrl:"" };
@@ -95,7 +80,7 @@ const CSS = `
   --navy:#1B2B6B;--navy2:#2A3F8F;
   --blue:#1D6CE8;--blue2:#1558CC;--blue-l:#EBF2FF;
   --teal:#2BA890;--teal2:#1E8A75;--teal-l:#E8F7F4;
-  --bg:#F0F2F8;--surface:#FFFFFF;--border:#E2E6EF;--border2:#CDD3E0;
+  --bg:#EEF0EF;--surface:#FFFFFF;--border:#E2E6EF;--border2:#CDD3E0;
   --text:#111827;--text2:#4B5563;--text3:#9CA3AF;
   --red:#EF4444;--red-bg:#FEF2F2;
   --amber:#F59E0B;--amber-bg:#FFFBEB;
@@ -113,19 +98,18 @@ button,input,select,textarea{font-family:'Inter',sans-serif}
 .page{padding:22px;max-width:1180px;width:100%}
 
 /* ── SIDEBAR ── */
-.sb{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1)}
-.sb-logo{padding:16px 14px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
-.logo-wm{display:flex;align-items:baseline;font-size:17px;font-weight:800;letter-spacing:-.3px;line-height:1}
+.sb{width:var(--sidebar-w);background:#0F2B3D;border-right:none;position:fixed;top:0;left:0;bottom:0;z-index:200;display:flex;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1)}
+.sb-logo{padding:16px 14px 13px;border-bottom:1px solid var(--border);background:#fff;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
 .logo-sole{color:var(--navy)}.logo-tasker{color:var(--teal)}
 .logo-wave{display:inline-flex;align-items:center;gap:1.5px;height:17px;margin:0 1px}
 .logo-bar{width:2.5px;border-radius:2px;background:var(--blue)}
 .sb-nav{flex:1;padding:10px;overflow-y:auto}
-.nav-sec{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.9px;text-transform:uppercase;padding:14px 8px 5px}
-.nav-it{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--text2);margin-bottom:1px;transition:all .14s;user-select:none}
-.nav-it:hover{background:var(--bg);color:var(--text)}
-.nav-it.on{background:var(--blue-l);color:var(--blue);font-weight:600}
+.nav-sec{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.9px;text-transform:uppercase;padding:14px 8px 5px}
+.nav-it{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13.5px;font-weight:500;color:rgba(255,255,255,.6);margin-bottom:1px;transition:all .14s;user-select:none}
+.nav-it:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-it.on{background:var(--teal);color:#fff;font-weight:600}
 .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px}
-.sb-user{padding:12px 12px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer}
+.sb-user{padding:12px 12px 14px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;cursor:pointer}
 .av{display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;font-weight:700;flex-shrink:0;position:relative;font-size:13px}
 .av-dot{position:absolute;bottom:1px;right:1px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid #fff}
 
@@ -381,6 +365,7 @@ const P = {
   van:"M1 3h15v13H1z M16 8h4l3 3v5h-7V8z M5.5 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm13 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z",
   tool:"M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
   copy:"M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
+  download:"M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
   mail:"M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
   brain:"M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
   note:"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
@@ -544,11 +529,18 @@ Return ONLY valid JSON. No markdown, no explanation:
   "job_id": "matching job id from available jobs or null",
   "client_name": "extracted client name or null",
   "address": "extracted address or null",
-  "tasks": ["array of task strings extracted, empty array if none"],
+  "tasks": [
+    {
+      "title": "concise task title",
+      "priority": "P1 or P2 or P3",
+      "assigned_to": "one of: ${TEAM_MEMBERS.join(", ")} or Me",
+      "due_date": "YYYY-MM-DD or null"
+    }
+  ],
   "reminder_text": "extracted reminder text or null",
   "reminder_date": "extracted date in YYYY-MM-DD format or null",
   "notes": "any remaining context as a clean note or null",
-  "task_title": "if intent is task: concise task title or null",
+  "task_title": "if single task intent: concise task title or null",
   "priority": "P1 or P2 or P3",
   "assigned_to": "one of: ${TEAM_MEMBERS.join(", ")} or null",
   "smart_suggestions": ["array of smart suggestions like: invoice, certificate, follow-up — empty if none"]
@@ -556,11 +548,12 @@ Return ONLY valid JSON. No markdown, no explanation:
 
 Intent guide:
 - job: contains client name, address, or job description
-- task: action to be done (order, call, book, send, submit, fix)
+- task: action to be done (order, call, book, send, submit, fix) — extract ALL tasks mentioned
 - reminder: contains time intent ("remind me", "follow up", dates, "don't forget", "tomorrow", "next week")
 - note: general info, no clear action or time intent
 
-Priority: P1=urgent/today, P2=this week, P3=low/when possible`;
+Priority: P1=urgent/today, P2=this week, P3=low/when possible
+If multiple tasks are mentioned, populate the tasks array with each one separately.`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -576,6 +569,81 @@ Priority: P1=urgent/today, P2=this week, P3=low/when possible`;
 };
 
 
+
+// ─── JOB SEARCH INPUT ─────────────────────────────────────────────────────────
+// Replaces all job dropdowns — type to filter, tap to select, free-text if no match
+const JobSearchInput = ({jobs=[], value, onChange, label="Link to Job (optional)", placeholder="Type address or client…"}) => {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const ref = useRef(null);
+
+  // Init selected from value (jobId)
+  useEffect(()=>{
+    if(value && jobs.length){
+      const j = jobs.find(j=>j.id===value);
+      if(j){ setSelected(j); setQuery(j.address||j.name); }
+    }
+  },[]);
+
+  const filtered = query.trim().length===0 ? [] :
+    jobs.filter(j=>{
+      const q = query.toLowerCase();
+      return (j.address||"").toLowerCase().includes(q) ||
+             (j.client||"").toLowerCase().includes(q) ||
+             (j.name||"").toLowerCase().includes(q);
+    }).slice(0,6);
+
+  const select = (j) => {
+    setSelected(j);
+    setQuery(j.address||j.name);
+    setOpen(false);
+    onChange(j.id, j);
+  };
+
+  const clear = () => {
+    setSelected(null);
+    setQuery("");
+    setOpen(false);
+    onChange("", null);
+  };
+
+  const handleChange = (e) => {
+    const v = e.target.value;
+    setQuery(v);
+    setOpen(true);
+    if(selected){ setSelected(null); onChange("", null); }
+  };
+
+  return (
+    <div className="fg" style={{position:"relative"}} ref={ref}>
+      <label className="fl">{label}</label>
+      <div style={{position:"relative"}}>
+        <input className="fi" value={query} onChange={handleChange}
+          onFocus={()=>setOpen(true)}
+          onBlur={()=>setTimeout(()=>setOpen(false),150)}
+          placeholder={placeholder}
+          style={{paddingRight:28}}
+        />
+        {query&&<button onClick={clear} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:15,color:"var(--text3)",lineHeight:1}}>×</button>}
+      </div>
+      {open&&filtered.length>0&&(
+        <div style={{position:"absolute",zIndex:200,top:"100%",left:0,right:0,background:"#fff",border:"1px solid var(--border)",borderRadius:9,boxShadow:"0 4px 16px rgba(0,0,0,.1)",marginTop:2,overflow:"hidden"}}>
+          {filtered.map(j=>(
+            <div key={j.id} onMouseDown={()=>select(j)}
+              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid var(--border)",fontSize:13}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--bg)"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <div style={{fontWeight:600,color:"var(--navy)"}}>{j.address||j.name}</div>
+              {j.client&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{j.client}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {selected&&<div style={{fontSize:11,color:"var(--teal2)",marginTop:3,fontWeight:600}}>✓ Linked to {selected.address||selected.name}</div>}
+    </div>
+  );
+};
 
 // ─── VOICE CAPTURE MODAL ──────────────────────────────────────────────────────
 // Record → stop → transcript + 4 action buttons shown IMMEDIATELY
@@ -674,8 +742,14 @@ const CaptureModal = ({
     try {
       const r = await analyseCapture(clean, jobs);
       if(r) {
-        // Task: keep full transcript as title — AI only improves priority and job link
-        setTaskDraft(p=>({...p, priority:r.priority||p.priority, assignedTo:r.assigned_to||p.assignedTo, jobId:r.job_id||p.jobId}));
+        // Multi-task: if AI returns tasks array with 2+ items, store them
+        const aiTasks = Array.isArray(r.tasks) && r.tasks.length > 0 && typeof r.tasks[0]==="object" ? r.tasks : null;
+        if(aiTasks && aiTasks.length > 1) {
+          // Store multi-task result for doSave to use
+          setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:r.job_id||p.jobId}));
+        } else {
+          setTaskDraft(p=>({...p, priority:r.priority||p.priority, assignedTo:r.assigned_to||p.assignedTo, jobId:r.job_id||p.jobId}));
+        }
         setJobDraft(p=>({...p, name:r.job_name||r.client_name||p.name, client:r.client_name||p.client, address:r.address||p.address, scope:r.notes||p.scope}));
         setReminderDraft(p=>({...p, title:r.reminder_text||p.title, notes:r.notes||p.notes, dueDate:r.reminder_date||p.dueDate, linkedJobId:r.job_id||p.linkedJobId}));
       }
@@ -684,7 +758,24 @@ const CaptureModal = ({
   };
 
   const doSave = () => {
-    if(confirmType==="task")      onSaveTask({id:`T${uid()}`,done:false,...taskDraft});
+    if(confirmType==="task") {
+      if(taskDraft._multiTasks && taskDraft._multiTasks.length > 1) {
+        // Create multiple tasks from AI response
+        taskDraft._multiTasks.forEach(t => {
+          onSaveTask({
+            id:`T${uid()}`, done:false,
+            title:t.title||taskDraft.title,
+            priority:t.priority||"P2",
+            assignedTo:t.assigned_to||"Me",
+            jobId:taskDraft.jobId||"",
+            dueDate:t.due_date||"",
+            notes:""
+          });
+        });
+      } else {
+        onSaveTask({id:`T${uid()}`,done:false,...taskDraft});
+      }
+    }
     else if(confirmType==="job")  onCreateJob(jobDraft, text);
     else if(confirmType==="reminder") onSaveReminder({id:`R${uid()}`,done:false,promoted:false,text:reminderDraft.title,...reminderDraft});
     onClose();
@@ -817,18 +908,17 @@ const CaptureModal = ({
             <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={taskDraft.assignedTo} onChange={e=>setTaskDraft(p=>({...p,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
           </div>
           <div className="fr">
-            <div className="fg"><label className="fl">Link to Job</label><select className="fs" value={taskDraft.jobId} onChange={e=>setTaskDraft(p=>({...p,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+            <JobSearchInput jobs={jobs} value={taskDraft.jobId} onChange={(id)=>setTaskDraft(p=>({...p,jobId:id}))} label="Link to Job"/>
             <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={taskDraft.dueDate} onChange={e=>setTaskDraft(p=>({...p,dueDate:e.target.value}))}/></div>
           </div>
           <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:60}} value={taskDraft.notes} onChange={e=>setTaskDraft(p=>({...p,notes:e.target.value}))}/></div>
         </>}
 
         {confirmType==="job"&&<>
-          <div className="fr">
-            <div className="fg"><label className="fl">Job Name *</label><input className="fi" value={jobDraft.name} onChange={e=>setJobDraft(p=>({...p,name:e.target.value}))} autoFocus/></div>
-            <div className="fg"><label className="fl">Client</label><input className="fi" value={jobDraft.client} onChange={e=>setJobDraft(p=>({...p,client:e.target.value}))}/></div>
-          </div>
-          <div className="fg"><label className="fl">Address</label><input className="fi" value={jobDraft.address} onChange={e=>setJobDraft(p=>({...p,address:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Address</label><input className="fi" placeholder="Site address" value={jobDraft.address} onChange={e=>setJobDraft(p=>({...p,address:e.target.value}))} autoFocus/></div>
+          <div className="fg"><label className="fl">Customer</label><input className="fi" placeholder="e.g. Marcus Webb" value={jobDraft.client} onChange={e=>setJobDraft(p=>({...p,client:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Builder (optional)</label><input className="fi" placeholder="e.g. Hargreaves Build Co." value={jobDraft.builder||""} onChange={e=>setJobDraft(p=>({...p,builder:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Phone (optional)</label><input className="fi" placeholder="e.g. 0400 123 456" value={jobDraft.phone||""} onChange={e=>setJobDraft(p=>({...p,phone:e.target.value}))}/></div>
           <div className="fg"><label className="fl">Scope of Works</label><textarea className="fta" style={{minHeight:80}} value={jobDraft.scope} onChange={e=>setJobDraft(p=>({...p,scope:e.target.value}))}/></div>
         </>}
 
@@ -839,7 +929,7 @@ const CaptureModal = ({
             <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={reminderDraft.dueDate} onChange={e=>setReminderDraft(p=>({...p,dueDate:e.target.value}))}/></div>
             <div className="fg"><label className="fl">Time</label><input type="time" className="fi" value={reminderDraft.dueTime} onChange={e=>setReminderDraft(p=>({...p,dueTime:e.target.value}))}/></div>
           </div>
-          <div className="fg"><label className="fl">Link to Job</label><select className="fs" value={reminderDraft.linkedJobId} onChange={e=>setReminderDraft(p=>({...p,linkedJobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+          <JobSearchInput jobs={jobs} value={reminderDraft.linkedJobId} onChange={(id)=>setReminderDraft(p=>({...p,linkedJobId:id}))} label="Link to Job"/>
         </>}
       </div>}
 
@@ -927,7 +1017,7 @@ const InboxPage = ({inbox,setInbox,tasks,setTasks,reminders,setReminders,jobs,on
           <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={pf.assignedTo} onChange={e=>setPf(p=>({...p,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
         </div>
         <div className="fr">
-          <div className="fg"><label className="fl">Link to Job</label><select className="fs" value={pf.jobId} onChange={e=>setPf(p=>({...p,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+          <JobSearchInput jobs={jobs} value={pf.jobId} onChange={(id)=>setPf(p=>({...p,jobId:id}))} label="Link to Job"/>
           <div className="fg"><label className="fl">Due Date (optional)</label><input type="date" className="fi" value={pf.dueDate} onChange={e=>setPf(p=>({...p,dueDate:e.target.value}))}/></div>
         </div>
       </Mod>}
@@ -936,7 +1026,7 @@ const InboxPage = ({inbox,setInbox,tasks,setTasks,reminders,setReminders,jobs,on
 };
 
 // ─── ADD TASK MODAL — structured creation: choose type first, then fill form ──
-const AddTaskModal = ({onVoice, onCreateJob, onSaveTask, onSaveReminder, onNav, onClose}) => {
+const AddTaskModal = ({jobs=[], onVoice, onCreateJob, onSaveTask, onSaveReminder, onNav, onClose}) => {
   const [step, setStep] = useState("choose"); // "choose" | "task" | "job" | "reminder"
   const [tf, setTf] = useState({title:"",priority:"P2",assignedTo:"Me",dueDate:"",jobId:"",notes:""});
   const [jf, setJf] = useState({name:"",client:"",address:"",scope:"",notes:""});
@@ -962,6 +1052,7 @@ const AddTaskModal = ({onVoice, onCreateJob, onSaveTask, onSaveReminder, onNav, 
     <Mod title="New Task" onClose={onClose}
       footer={<><button className="btn btn-ghost" onClick={()=>setStep("choose")}>← Back</button><button className="btn btn-blue" onClick={saveTask}>Add Task</button></>}>
       <div className="fg"><label className="fl">What needs doing?</label><input className="fi" placeholder="e.g. Call Marcus re: cable order" value={tf.title} onChange={e=>setTf(p=>({...p,title:e.target.value}))} autoFocus/></div>
+      <JobSearchInput jobs={jobs} value={tf.jobId||""} onChange={(id)=>setTf(p=>({...p,jobId:id}))}/>
       <div className="fr">
         <div className="fg"><label className="fl">Priority</label><select className="fs" value={tf.priority} onChange={e=>setTf(p=>({...p,priority:e.target.value}))}><option value="P1">P1 — Urgent</option><option value="P2">P2 — High</option><option value="P3">P3 — Low</option></select></div>
         <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={tf.assignedTo} onChange={e=>setTf(p=>({...p,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
@@ -1040,6 +1131,10 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
   const [selTask,setSelTask]=useState(null);
   const [reviewIntakeDash,setReviewIntakeDash]=useState(null);
   const [selReminder,setSelReminder]=useState(null);
+  const [compressedGroups,setCompressedGroups]=useState({});
+  const toggleCompress=jobId=>setCompressedGroups(p=>({...p,[jobId]:!p[jobId]}));
+  const [tasksOpen,setTasksOpen]=useState(true);
+  const [remindersOpen,setRemindersOpen]=useState(true);
 
   const complete=id=>setTasks(p=>p.map(t=>t.id===id?{...t,done:true}:t));
   const reopen=id=>setTasks(p=>p.map(t=>t.id===id?{...t,done:false}:t));
@@ -1075,15 +1170,15 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
       <div style={{display:"flex",gap:8,marginBottom:20}}>
         <button onClick={onAddTask} style={{
           flex:2,display:"flex",alignItems:"center",gap:12,
-          padding:"12px 16px",background:"#D1FAE5",color:"#065F46",
-          borderRadius:12,border:"1.5px solid #6EE7B7",cursor:"pointer",
+          padding:"12px 16px",background:"#1A3F52",color:"#fff",
+          borderRadius:12,border:"1.5px solid #254E64",cursor:"pointer",
           transition:"all .14s",fontFamily:"'Inter',sans-serif",textAlign:"left"
         }}
-          onMouseEnter={e=>{e.currentTarget.style.background="#A7F3D0";e.currentTarget.style.borderColor="#34D399"}}
-          onMouseLeave={e=>{e.currentTarget.style.background="#D1FAE5";e.currentTarget.style.borderColor="#6EE7B7"}}
+          onMouseEnter={e=>{e.currentTarget.style.background="#254E64";e.currentTarget.style.borderColor="#2F6070"}}
+          onMouseLeave={e=>{e.currentTarget.style.background="#1A3F52";e.currentTarget.style.borderColor="#254E64"}}
         >
-          <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(16,185,129,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <Ic n="plus" s={17} col="#065F46"/>
+          <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <Ic n="plus" s={17} col="#fff"/>
           </div>
           <div>
             <div style={{fontSize:14,fontWeight:700}}>Add Task / Job</div>
@@ -1126,34 +1221,76 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             </div>
           </div>
 
-          <div className="card" style={{padding:0}}>
-            <div style={{padding:"12px 14px 0"}}>
-              <div className="sh">
-                <span className="st">Open Tasks</span>
-                <button className="va" onClick={()=>onNav("tasks")}>All <Ic n="chevR" s={13}/></button>
+          <div style={{marginBottom:12,border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
+            {/* Header — part of the container */}
+            <div onClick={()=>setTasksOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:tasksOpen?"1px solid var(--border)":"none",background:"#fff"}}>
+              <span className="st">Open Tasks {openTasks.length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--green)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{openTasks.length}</span>}</span>
+              <div style={{display:"flex",alignItems:"center",gap:16}}>
+                <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{tasksOpen?"↑":"↓"}</span>
+                <button className="va" onClick={e=>{e.stopPropagation();onNav("tasks");}}>All <Ic n="chevR" s={13}/></button>
               </div>
             </div>
+            {tasksOpen&&<div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
             {openTasks.length===0
-              ?<div className="em"><Ic n="check" s={26} col="var(--green)"/><p style={{marginTop:8,fontSize:13,color:"var(--green)"}}>Nothing due. You're on top of it.</p></div>
-              :openTasks.slice(0,8).map(t=>{
-                const job=jobs.find(j=>j.id===t.jobId);
-                return (
-                  <div key={t.id} className="task-row" style={{cursor:"pointer"}} onClick={()=>setSelTask(t)}>
-                    <HoldCheck done={t.done} onComplete={()=>complete(t.id)} onUncomplete={()=>reopen(t.id)}/>
-                    <div className="t-body">
-                      <div className="t-title">{t.title}</div>
-                      <div className="t-meta">
-                        {job&&<span className="tag"><Ic n="link" s={10}/>{job.name}</span>}
-                        <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
-                        {t.dueDate&&<span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":t.dueDate}</span>}
+              ?<><div className="card"><div className="em"><Ic n="check" s={26} col="var(--green)"/><p style={{marginTop:8,fontSize:13,color:"var(--green)"}}>Nothing due. You're on top of it.</p></div></div></>
+              :(() => {
+                const groupMap = {};
+                const groupOrder = [];
+                openTasks.slice(0,12).forEach(t => {
+                  const key = t.jobId || `solo_${t.id}`;
+                  if(!groupMap[key]){
+                    groupMap[key] = {key, jobId:t.jobId||null, tasks:[]};
+                    groupOrder.push(key);
+                  }
+                  groupMap[key].tasks.push(t);
+                });
+                return groupOrder.map(key => {
+                  const {jobId, tasks:gTasks} = groupMap[key];
+                  const job = jobs.find(j=>j.id===jobId);
+                  const isGroup = gTasks.length > 1;
+                  const isCompressed = isGroup && compressedGroups[jobId] && gTasks.length > 1;
+                  if(isCompressed) {
+                    return (
+                      <div key={key} className="card" style={{padding:0,marginBottom:8}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px"}}>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:13,color:"var(--navy)"}}>{job?.address||job?.name||"Tasks"}</div>
+                            <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job?.client&&<span>{job.client} · </span>}{gTasks.length} tasks remaining</div>
+                          </div>
+                          <button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Expand ↓</button>
+                        </div>
                       </div>
+                    );
+                  }
+                  return (
+                    <div key={key} className="card" style={{padding:0,marginBottom:8}}>
+                      {job&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px 6px",borderBottom:"1px solid var(--border)"}}>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:700,color:"var(--navy)"}}>{job.address||job.name}</div>
+                          {job.client&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job.client}</div>}
+                        </div>
+                        {isGroup&&<button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Compress ↑</button>}
+                      </div>}
+                      {gTasks.map(t=>(
+                        <div key={t.id} className="task-row" style={{cursor:"pointer"}} onClick={()=>setSelTask(t)}>
+                          <HoldCheck done={t.done} onComplete={()=>{complete(t.id);if(isGroup&&gTasks.filter(x=>!x.done).length<=2)setCompressedGroups(p=>({...p,[jobId]:false}));}} onUncomplete={()=>reopen(t.id)}/>
+                          <div className="t-body">
+                            <div className="t-title">{t.title}</div>
+                            <div className="t-meta">
+                              <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
+                              {t.dueDate&&<span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":t.dueDate}</span>}
+                            </div>
+                          </div>
+                          <div className="t-right"><PBadge p={t.priority}/></div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="t-right"><PBadge p={t.priority}/></div>
-                  </div>
-                );
-              })
+                  );
+                });
+              })()
             }
-            {done12>0&&<div style={{padding:"9px 14px",fontSize:12,color:"var(--text3)",display:"flex",alignItems:"center",gap:6,borderTop:"1px solid var(--border)"}}><Ic n="check" s={12} col="var(--green)"/>{done12} done</div>}
+            {done12>0&&<div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px",display:"flex",alignItems:"center",gap:6}}><Ic n="check" s={12} col="var(--green)"/>{done12} completed</div>}
+            </div>}
           </div>
         </div>
 
@@ -1188,31 +1325,52 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             </div>
           </Mod>}
 
-          <div className="card mb-12" style={{padding:0}}>
-            <div style={{padding:"11px 13px 0"}}><div className="sh"><span className="st">Reminders</span><button className="va" onClick={()=>onNav("reminders")}>All <Ic n="chevR" s={12}/></button></div></div>
-            {reminders.filter(r=>!r.done).length===0
-              ?<div style={{padding:"10px 13px 13px",fontSize:12.5,color:"var(--text3)"}}>No reminders</div>
-              :reminders.filter(r=>!r.done).slice(0,4).map(r=>(
-                <div key={r.id} className="rem-row" style={{padding:"9px 13px",cursor:"pointer"}} onClick={()=>setSelReminder({...r})}>
-                  <div className="rem-dot" style={{background:r.dueDate&&r.dueDate<=TODAY?"var(--red)":"var(--amber)"}}/>
-                  <div style={{flex:1}}>
-                    <div className="rem-text" style={{fontSize:12.5}}>{(r.title||r.text).slice(0,65)}{(r.title||r.text).length>65?"…":""}</div>
-                    {r.dueDate&&<div className="rem-date" style={{fontSize:11,marginTop:1,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":r.dueDate}</div>}
-                  </div>
-                  <CopyBtn text={r.title||r.text} style={{flexShrink:0}}/>
-                </div>
-              ))
-            }
+          <div className="mb-12" style={{border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
+            <div onClick={()=>setRemindersOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:remindersOpen?"1px solid var(--border)":"none",background:"#fff"}}>
+              <span className="st">Reminders {reminders.filter(r=>!r.done).length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--amber)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{reminders.filter(r=>!r.done).length}</span>}</span>
+              <div style={{display:"flex",alignItems:"center",gap:16}}>
+                <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{remindersOpen?"↑":"↓"}</span>
+                <button className="va" onClick={e=>{e.stopPropagation();onNav("reminders");}}>All <Ic n="chevR" s={12}/></button>
+              </div>
+            </div>
+            {remindersOpen&&<div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
+              {reminders.filter(r=>!r.done).length===0
+                ?<div style={{padding:"8px 4px 10px",fontSize:12.5,color:"var(--text3)"}}>No reminders</div>
+                :reminders.filter(r=>!r.done).slice(0,4).map(r=>{
+                  const rJob=jobs.find(j=>j.id===r.linkedJobId);
+                  return (
+                    <div key={r.id} className="card" style={{padding:0,marginBottom:8}}>
+                      <div className="rem-row" style={{padding:"9px 13px",cursor:"pointer"}} onClick={()=>setSelReminder({...r})}>
+                        <div className="rem-dot" style={{background:r.dueDate&&r.dueDate<=TODAY?"var(--red)":"var(--amber)"}}/>
+                        <div style={{flex:1}}>
+                          <div className="rem-text" style={{fontSize:12.5}}>{(r.title||r.text).slice(0,65)}{(r.title||r.text).length>65?"…":""}</div>
+                          <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                            {rJob&&<span className="tag"><Ic n="link" s={10}/>{rJob.address||rJob.name}</span>}
+                            {r.dueDate&&<div className="rem-date" style={{fontSize:11,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":r.dueDate}</div>}
+                          </div>
+                        </div>
+                        <CopyBtn text={r.title||r.text} style={{flexShrink:0}}/>
+                      </div>
+                    </div>
+                  );
+                })
+              }
+            </div>}
           </div>
 
           {selReminder&&<Mod title="Reminder" onClose={()=>setSelReminder(null)}
             footer={<>
               <button className="btn btn-ghost" onClick={()=>setSelReminder(null)}>← Back</button>
+              <button className="btn btn-ghost" onClick={()=>{
+                setTasks(p=>[{id:`T${uid()}`,title:selReminder.title||selReminder.text,priority:"P2",assignedTo:"Me",jobId:selReminder.linkedJobId||"",dueDate:selReminder.dueDate||"",notes:selReminder.notes||"",done:false},...p]);
+                setReminders(p=>p.filter(r=>r.id!==selReminder.id));
+                setSelReminder(null);
+              }}>→ Task</button>
               <button className="btn btn-ghost" onClick={()=>{setReminders(p=>p.map(r=>r.id===selReminder.id?{...r,done:true}:r));setSelReminder(null);}}>✓ Done</button>
               <button className="btn btn-blue" onClick={()=>{setReminders(p=>p.map(r=>r.id===selReminder.id?{...r,...selReminder,text:selReminder.title}:r));setSelReminder(null);}}>Save</button>
             </>}>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}}>
-              <a href={`mailto:?subject=${encodeURIComponent(selReminder.title||selReminder.text||"")}&body=${encodeURIComponent([selReminder.title||selReminder.text,selReminder.notes].filter(Boolean).join("\n\n"))}`}
+              <a href={`mailto:?subject=${encodeURIComponent(selReminder.title||selReminder.text||"")}&body=${mb(selReminder.title||selReminder.text,selReminder.notes,"",`Regards,\n${ACCOUNT.name}`)}`}
                 style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"1.5px solid var(--border)",background:"#fff",fontSize:12,fontWeight:600,color:"var(--text2)",textDecoration:"none",fontFamily:"'Inter',sans-serif"}}>
                 <Ic n="mail" s={13} col="var(--blue)"/> Email
               </a>
@@ -1224,11 +1382,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
               <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={selReminder.dueDate||""} onChange={e=>setSelReminder(p=>({...p,dueDate:e.target.value}))}/></div>
               <div className="fg"><label className="fl">Time</label><input type="time" className="fi" value={selReminder.dueTime||""} onChange={e=>setSelReminder(p=>({...p,dueTime:e.target.value}))}/></div>
             </div>
-            <div className="fg"><label className="fl">Link to Job</label>
-              <select className="fs" value={selReminder.linkedJobId||""} onChange={e=>setSelReminder(p=>({...p,linkedJobId:e.target.value}))}>
-                <option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}
-              </select>
-            </div>
+            <JobSearchInput jobs={jobs} value={selReminder.linkedJobId||""} onChange={(id)=>setSelReminder(p=>({...p,linkedJobId:id}))} label="Link to Job"/>
           </Mod>}
 
           {/* Capture inbox — shown only if items exist, quiet placement */}
@@ -1306,8 +1460,8 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
           <div style={{fontSize:11,fontWeight:700,color:"var(--blue)",textTransform:"uppercase",letterSpacing:.4,marginBottom:5}}>Linked Job</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
             <div>
-              <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{job.name}</div>
-              <div style={{fontSize:12,color:"var(--text3)",marginTop:1}}>{job.client} · {job.address}</div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{job.address||job.name}</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginTop:1}}>{job.client}</div>
             </div>
             <button onClick={()=>{onClose();onOpenJob&&onOpenJob(job.id);}} style={{
               background:"var(--blue)",color:"#fff",border:"none",borderRadius:8,
@@ -1315,7 +1469,7 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
             }}>Open Job →</button>
           </div>
           {job.email&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--blue-l)"}}>
-            <a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.name)}&body=${encodeURIComponent(`Hi ${job.client},\n\nRe: ${job.name} — ${job.address}\n\n${f.title}\n\n`)}`}
+            <a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}&body=${mb(`Hi ${job.client},`,`Re: ${job.address||job.name}`,f.title,"",`Regards,\n${ACCOUNT.name}`)}`}
               style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"var(--blue)",fontWeight:600,textDecoration:"none"}}>
               ✉ Email {job.client} →
             </a>
@@ -1339,7 +1493,7 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
           <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={f.assignedTo} onChange={e=>setF(p=>({...p,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
         </div>
         <div className="fr">
-          <div className="fg"><label className="fl">Link to Job</label><select className="fs" value={f.jobId||""} onChange={e=>setF(p=>({...p,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+          <JobSearchInput jobs={jobs} value={f.jobId||""} onChange={(id)=>setF(p=>({...p,jobId:id}))} label="Link to Job"/>
           <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={f.dueDate||""} onChange={e=>setF(p=>({...p,dueDate:e.target.value}))}/></div>
         </div>
         <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:80}} value={f.notes||""} onChange={e=>setF(p=>({...p,notes:e.target.value}))}/></div>
@@ -1385,7 +1539,7 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
                 <div className="t-body">
                   <div className={`t-title${t.done?" dn":""}`}>{t.title}</div>
                   <div className="t-meta">
-                    {job&&<span className="tag"><Ic n="link" s={10}/>{job.name}</span>}
+                    {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
                     <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
                     {t.dueDate&&<span style={{fontSize:11,color:!t.done&&t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY&&!t.done?"Overdue":t.dueDate}</span>}
                   </div>
@@ -1409,7 +1563,7 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
           <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={form.assignedTo} onChange={e=>setForm(f=>({...f,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
         </div>
         <div className="fr">
-          <div className="fg"><label className="fl">Link to Job</label><select className="fs" value={form.jobId} onChange={e=>setForm(f=>({...f,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+          <JobSearchInput jobs={jobs} value={form.jobId||""} onChange={(id)=>setForm(f=>({...f,jobId:id}))} label="Link to Job"/>
           <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></div>
         </div>
         <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:60}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></div>
@@ -1459,7 +1613,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
           {r.notes&&<div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{r.notes}</div>}
           <div className="rem-date flex gap-8" style={{marginTop:4}}>
             {r.dueDate&&<span style={{color:urgency==="overdue"?"var(--red)":urgency==="today"?"var(--amber)":"var(--text3)",display:"flex",alignItems:"center",gap:3}}><Ic n="clock" s={10}/>{urgency==="overdue"?"Overdue":urgency==="today"?"Today":r.dueDate}{r.dueTime?" at "+r.dueTime:""}</span>}
-            {job&&<span className="tag"><Ic n="link" s={10}/>{job.name}</span>}
+            {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
             {!r.dueDate&&<span style={{color:"var(--text3)"}}>No due date</span>}
           </div>
         </div>
@@ -1524,7 +1678,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
           <div className="fg"><label className="fl">Due Date (optional)</label><input type="date" className="fi" value={form.dueDate} onChange={e=>setForm(p=>({...p,dueDate:e.target.value}))}/></div>
           <div className="fg"><label className="fl">Time (optional)</label><input type="time" className="fi" value={form.dueTime} onChange={e=>setForm(p=>({...p,dueTime:e.target.value}))}/></div>
         </div>
-        <div className="fg"><label className="fl">Link to Job (optional)</label><select className="fs" value={form.linkedJobId} onChange={e=>setForm(p=>({...p,linkedJobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+        <JobSearchInput jobs={jobs} value={form.linkedJobId||""} onChange={(id)=>setForm(p=>({...p,linkedJobId:id}))} label="Link to Job (optional)"/>
       </Mod>}
 
       {promoteId&&<Mod title="Move to Tasks" onClose={()=>setPromoteId(null)}
@@ -1540,7 +1694,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
           <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={pf.assignedTo} onChange={e=>setPf(p=>({...p,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
         </div>
         <div className="fr">
-          <div className="fg"><label className="fl">Link to Job (optional)</label><select className="fs" value={pf.jobId} onChange={e=>setPf(p=>({...p,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div>
+          <JobSearchInput jobs={jobs} value={pf.jobId||""} onChange={(id)=>setPf(p=>({...p,jobId:id}))} label="Link to Job (optional)"/>
           <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={pf.dueDate} onChange={e=>setPf(p=>({...p,dueDate:e.target.value}))}/></div>
         </div>
       </Mod>}
@@ -1552,7 +1706,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         </>}>
         {/* Top-right icon row — email + copy */}
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}}>
-          <a href={`mailto:?subject=${encodeURIComponent(editReminder.title||editReminder.text||"")}&body=${encodeURIComponent([editReminder.title||editReminder.text,editReminder.notes].filter(Boolean).join("\n\n"))}`}
+          <a href={`mailto:?subject=${encodeURIComponent(editReminder.title||editReminder.text||"")}&body=${mb(editReminder.title||editReminder.text,editReminder.notes,"",`Regards,\n${ACCOUNT.name}`)}`}
             style={{display:"inline-flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"1.5px solid var(--border)",background:"#fff",fontSize:12,fontWeight:600,color:"var(--text2)",textDecoration:"none",fontFamily:"'Inter',sans-serif"}}
             title="Email this reminder">
             <Ic n="mail" s={13} col="var(--blue)"/> Email
@@ -1584,7 +1738,7 @@ const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
   return (
     <div className="page">
       <div className="flex ai-c jb mb-20">
-        <div><h1 style={{fontSize:20,fontWeight:700}}>Jobs</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>${jobs.reduce((s,j)=>s+(j.value||0),0).toLocaleString()} pipeline · {jobs.length} jobs</p></div>
+        <div><h1 style={{fontSize:20,fontWeight:700}}>Jobs</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>{jobs.length} jobs</p></div>
         <button className="btn btn-teal" onClick={onNew}><Ic n="plus" s={15}/> Create Job</button>
       </div>
 
@@ -1615,15 +1769,15 @@ const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
       <div className="card" style={{padding:0}}>
         {filtered.length===0?<div className="em"><Ic n="jobs" s={32} col="var(--text3)"/><p style={{marginTop:8}}>No jobs found</p></div>
         :filtered.map(j=>(
-          <div key={j.id} className="li" onClick={()=>onSelect(j.id)}>
+          <div key={j.id} className="li" onClick={()=>onSelect(j.id)} style={j.status==="completed"?{opacity:0.55}:{}}>
             <div style={{width:5,alignSelf:"stretch",borderRadius:"4px 0 0 4px",background:statusColor[j.status]||"var(--border)",flexShrink:0,margin:"-12px 0 -12px -16px"}}/>
             <div className="pc-av" style={{width:40,height:40,fontSize:13,marginLeft:4}}>{ini(j.client)}</div>
             <div className="li-main">
-              <div className="li-title">{j.name}</div>
-              <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client} · {j.address.split(",")[0]}</div>
-              <div style={{marginTop:6}}><JobTags job={j}/></div>
+              <div className="li-title">{j.address||j.name}</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client}</div>
+              <div style={{marginTop:6}}><JobTags job={j}/>{j.status==="completed"&&(!j.certUploaded||!j.invoiceUploaded)&&<span style={{marginLeft:6,fontSize:11,color:"var(--amber)"}}>⚠️</span>}</div>
             </div>
-            <div className="li-meta"><span style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>£{(j.value||0).toLocaleString()}</span><Ic n="chevR" s={15} col="var(--text3)"/></div>
+            <div className="li-meta"><span style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>${(j.value||0).toLocaleString()}</span><Ic n="chevR" s={15} col="var(--text3)"/></div>
           </div>
         ))}
       </div>
@@ -1650,25 +1804,121 @@ const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
 };
 
 // ─── JOB DETAIL ───────────────────────────────────────────────────────────────
+function b64toBlob(src){
+  const parts=src.split(",");
+  const mime=parts[0].match(/:(.*?);/)[1];
+  const bin=atob(parts[1]);
+  const bytes=Array.from(bin).map(function(c){return c.charCodeAt(0);});
+  return new Blob([new Uint8Array(bytes)],{type:mime});
+}
 const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
   const [showAddTask,setShowAddTask]=useState(false);
-  const [showNote,setShowNote]=useState(false);
   const [showUF,setShowUF]=useState(false);
-  const [noteText,setNoteText]=useState("");
   const [ufText,setUfText]=useState("");
   const [tf,setTf]=useState({title:"",priority:"P2",assignedTo:"Me",dueDate:"",notes:""});
   const [editJob,setEditJob]=useState(false);
-  const [jf,setJf]=useState({name:job.name,client:job.client,address:job.address,phone:job.phone,email:job.email,date:job.date,value:job.value||"",scope:job.scope});
-  const fileRef=useRef(null);
+  const [jf,setJf]=useState({name:job.name,client:job.client,builder:job.builder||"",address:job.address,phone:job.phone,email:job.email,date:job.date,value:job.value||"",scope:job.scope});
 
   const upd=patch=>setJobs(p=>p.map(j=>j.id===job.id?{...j,...patch}:j));
   const saveJobEdit=()=>{upd({...jf,value:Number(jf.value)||0});setEditJob(false);};
-  const toggleWF=key=>{
-    if(key==="completed"&&!job.checkboxes.completed&&(!job.certUploaded||!job.invoiceUploaded)){
-      alert("Please upload both the Certificate and Invoice before marking the job as Completed.");
-      return;
+  const [showCompleteConfirm,setShowCompleteConfirm]=useState(false);
+  const [showDocConfirm,setShowDocConfirm]=useState(null);
+  const certFileRef=useRef(null);
+  const [showCertNotes,setShowCertNotes]=useState(false);
+  const [showInvNotes,setShowInvNotes]=useState(false);
+  const invFileRef=useRef(null);
+  const [viewDoc,setViewDoc]=useState(null);
+  // Voice STT scratchpad for cert/invoice
+  const [docVoice,setDocVoice]=useState(null);
+  const [certText,setCertText]=useState(job.certNotes||"");
+  const [invText,setInvText]=useState(job.invNotes||"");
+  const docVoiceRef=useRef("");
+  const docSrRef=useRef(null);
+
+  const formatDocVoice=(raw)=>{
+    let t=raw;
+    // new line commands
+    t=t.replace(/\b(new line|next line|line break)\b/gi,"\n");
+    // multiply/times symbols
+    t=t.replace(/\b(\d+)\s*times\s*(\d+)/gi,"$1 × $2");
+    t=t.replace(/\btimes\b/gi,"×");
+    // dollar amounts — "four hundred and fifty dollars" handled by browser, just ensure $ prefix on numbers followed by "dollars"
+    t=t.replace(/(\d[\d,]*)\s*dollars?/gi,"$$$1");
+    // number words to digits (common ones)
+    const nw={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20,thirty:30,forty:40,fifty:50,hundred:100};
+    t=t.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty)\b/gi,m=>nw[m.toLowerCase()]??m);
+    return t.trim();
+  };
+
+  const startDocVoice=(type)=>{
+    setDocVoice(type);docVoiceRef.current="";
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-AU";
+      sr.onresult=e=>{
+        const t=Array.from(e.results).map(r=>r[0].transcript).join(" ");
+        docVoiceRef.current=t;
+        if(type==="cert")setCertText(p=>p+(p?"\n":"")+t);
+        else setInvText(p=>p+(p?"\n":"")+t);
+      };
+      sr.start();docSrRef.current=sr;}
+  };
+  const stopDocVoice=(type)=>{
+    try{docSrRef.current?.stop();}catch(e){}
+    setDocVoice(null);
+    const formatted=formatDocVoice(docVoiceRef.current);
+    if(formatted){
+      if(type==="cert"){
+        const val=(job.certNotes?job.certNotes+"\n":"")+formatted;
+        setCertText(val);upd({certNotes:val});
+      } else {
+        const val=(job.invNotes?job.invNotes+"\n":"")+formatted;
+        setInvText(val);upd({invNotes:val});
+      }
     }
+    docVoiceRef.current="";
+  };
+  const handleDocUpload=(type,e)=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const isImage=file.type.startsWith("image/");
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const src=ev.target.result;
+      if(type==="cert") upd({certUploaded:true,certFile:{src,name:file.name,isImage},checkboxes:{...job.checkboxes,cert:true}});
+      else upd({invoiceUploaded:true,invFile:{src,name:file.name,isImage},checkboxes:{...job.checkboxes,invoice:true}});
+    };
+    reader.readAsDataURL(file);
+  };
+  const shareFile=async(src,name)=>{
+    try{
+      const blob=b64toBlob(src);
+      const file=new File([blob],name,{type:blob.type});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}
+    }catch(e){}
+    const a=document.createElement("a");a.href=src;a.download=name;a.click();
+  };
+  const handleDocTick=(type)=>{
+    const alreadyUploaded=type==="cert"?job.certUploaded:job.invoiceUploaded;
+    if(alreadyUploaded){
+      // already uploaded — just toggle the tick normally
+      upd({checkboxes:{...job.checkboxes,[type]:!job.checkboxes[type]}});
+    } else {
+      setShowDocConfirm(type);
+    }
+  };
+  const confirmDocTick=()=>{
+    upd({checkboxes:{...job.checkboxes,[showDocConfirm]:true}});
+    setShowDocConfirm(null);
+  };
+  const toggleWF=key=>{
+    if(key==="cert"||key==="invoice"){handleDocTick(key);return;}
+    if(key==="completed"&&!job.checkboxes.completed){setShowCompleteConfirm(true);return;}
     upd({checkboxes:{...job.checkboxes,[key]:!job.checkboxes[key]}});
+    if(key==="completed"&&job.checkboxes.completed) upd({status:"active"});
+  };
+  const confirmComplete=()=>{
+    upd({checkboxes:{...job.checkboxes,completed:true},status:"completed"});
+    setShowCompleteConfirm(false);
   };
   const toggleScope=sid=>upd({scopeItems:job.scopeItems.map(s=>s.id===sid?{...s,done:!s.done}:s)});
   const toggleUFItem=uid2=>upd({unfinished:job.unfinished.map(u=>u.id===uid2?{...u,done:!u.done}:u)});
@@ -1682,38 +1932,80 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
     upd({tasks:[...job.tasks,nt.id]});
     setTf({title:"",priority:"P2",assignedTo:"Me",dueDate:"",notes:""}); setShowAddTask(false);
   };
-  const addNote=(text,via="manual")=>{
-    if(!text.trim())return;
-    const now=new Date();
-    const entry={id:`NL${uid()}`,text:text.trim(),date:now.toISOString().split("T")[0],time:now.toTimeString().slice(0,5),via};
-    upd({notesLog:[...(job.notesLog||[]),entry]});
-    setNoteText("");setShowNote(false);
-  };
   const addUF=()=>{if(!ufText.trim())return;upd({unfinished:[...job.unfinished,{id:`UF${uid()}`,text:ufText,done:false}]});setUfText("");setShowUF(false)};
 
-  // Voice note recording
+  // ── Diary state ──
+  const [showNote,setShowNote]=useState(false);
+  const [noteText,setNoteText]=useState("");
+  const [noteDraftPhotos,setNoteDraftPhotos]=useState([]);
+  const notePhotoRef=useRef(null);
+  const [editEntry,setEditEntry]=useState(null);
+  const [editEntryText,setEditEntryText]=useState("");
+  const [editEntryPhotos,setEditEntryPhotos]=useState([]);
+  const editPhotoRef=useRef(null);
+  const recTextRef=useRef("");
   const [recNote,setRecNote]=useState(false);
   const [recText,setRecText]=useState("");
   const noteSrRef=useRef(null);
+
+  const compressPhoto=(file,cb)=>{
+    const img=new Image();const reader=new FileReader();
+    reader.onload=ev=>{img.onload=()=>{
+      const MAX=1200;const scale=Math.min(1,MAX/Math.max(img.width,img.height));
+      const c=document.createElement("canvas");
+      c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      cb({id:`PH${uid()}`,name:file.name,src:c.toDataURL("image/jpeg",0.72)});
+    };img.src=ev.target.result;};
+    reader.readAsDataURL(file);
+  };
+
+  const addDiaryEntry=(text,via,photos)=>{
+    if(!text.trim()&&!photos.length)return;
+    const now=new Date();
+    const entry={id:`NL${uid()}`,text:text.trim(),date:now.toISOString().split("T")[0],time:now.toTimeString().slice(0,5),via,photos};
+    upd({notesLog:[...(job.notesLog||[]),entry]});
+  };
+
+  const handleNotePhoto=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    compressPhoto(file,ph=>setNoteDraftPhotos(p=>[...p,ph]));
+  };
+  const handleEditPhoto=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    compressPhoto(file,ph=>setEditEntryPhotos(p=>[...p,ph]));
+  };
+
+  const saveNote=()=>{
+    addDiaryEntry(noteText,"manual",noteDraftPhotos);
+    setNoteText("");setNoteDraftPhotos([]);setShowNote(false);
+  };
+  const openEditEntry=n=>{setEditEntry(n);setEditEntryText(n.text);setEditEntryPhotos(n.photos||[]);};
+  const saveEditEntry=()=>{
+    upd({notesLog:(job.notesLog||[]).map(n=>n.id===editEntry.id?{...n,text:editEntryText,photos:editEntryPhotos}:n)});
+    setEditEntry(null);
+  };
+
   const startVoiceNote=()=>{
-    setRecNote(true);setRecText("");
+    setRecNote(true);setRecText("");recTextRef.current="";
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(SR){const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-GB";
-      sr.onresult=e=>{setRecText(Array.from(e.results).map(r=>r[0].transcript).join(" "))};
+    if(SR){const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-AU";
+      sr.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join(" ");setRecText(t);recTextRef.current=t;};
       sr.start();noteSrRef.current=sr;}
   };
   const stopVoiceNote=()=>{
     try{noteSrRef.current?.stop();}catch(e){}
     setRecNote(false);
-    if(recText.trim()) addNote(recText,"voice");
+    if(recTextRef.current.trim())addDiaryEntry(recTextRef.current,"voice",[]);
+    recTextRef.current="";
   };
 
-  const handlePhoto=e=>{
-    const file=e.target.files?.[0];
-    if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>upd({photos:[...(job.photos||[]),{id:`PH${uid()}`,name:file.name,src:ev.target.result,date:TODAY}]});
-    reader.readAsDataURL(file);
+  const sharePhotos=async(photos,label)=>{
+    try{
+      const files=photos.map(ph=>{const blob=b64toBlob(ph.src);return new File([blob],ph.name||"photo.jpg",{type:blob.type});});
+      if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,title:label});return;}
+    }catch(e){}
+    if(photos[0])window.open(photos[0].src,"_blank");
   };
 
   const jobTasks=tasks.filter(t=>t.jobId===job.id);
@@ -1728,11 +2020,12 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
         <button className="btn-ic" onClick={onBack}><Ic n="chevL" s={16}/></button>
         <div style={{flex:1}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>{job.ref}</div>
-          <div style={{fontSize:20,fontWeight:700,letterSpacing:-.3}}>{job.name}</div>
-          <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{job.client} · {job.address}</div>
+          <div style={{fontSize:20,fontWeight:700,letterSpacing:-.3}}>{job.address||job.name}</div>
+          <div style={{fontSize:12.5,color:"var(--text2)",marginTop:2}}>{job.client}</div>
         </div>
         <div className="flex gap-8 ai-c">
           <JobTags job={job}/>
+          {job.phone&&<a href={`tel:${job.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,background:"var(--teal)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",flexShrink:0}}>📞 Call</a>}
         </div>
       </div>
 
@@ -1751,7 +2044,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
             <div className="section-box-head">
               <span className="st">Job Details</span>
               <div className="flex gap-8">
-                {job.email&&<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.name)}&body=${encodeURIComponent(`Hi ${job.client},\n\nRe: ${job.name}\n${job.address}\n\n`)}`}
+                {job.email&&<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}&body=${mb(`Hi ${job.client},`,`Re: ${job.address||job.name}`,`Regards,\n${ACCOUNT.name}`)}`}
                   style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:7,background:"var(--blue-l)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none",border:"1.5px solid var(--blue)30"}}>
                   ✉ Email
                 </a>}
@@ -1760,15 +2053,15 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
             </div>
             {editJob
               ? <div style={{padding:"12px 16px"}}>
-                  <div className="fr"><div className="fg"><label className="fl">Job Name</label><input className="fi" value={jf.name} onChange={e=>setJf(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Client</label><input className="fi" value={jf.client} onChange={e=>setJf(p=>({...p,client:e.target.value}))}/></div></div>
                   <div className="fg"><label className="fl">Address</label><input className="fi" value={jf.address} onChange={e=>setJf(p=>({...p,address:e.target.value}))}/></div>
+                  <div className="fr"><div className="fg"><label className="fl">Customer</label><input className="fi" value={jf.client} onChange={e=>setJf(p=>({...p,client:e.target.value}))}/></div><div className="fg"><label className="fl">Builder</label><input className="fi" value={jf.builder||""} onChange={e=>setJf(p=>({...p,builder:e.target.value}))}/></div></div>
                   <div className="fr"><div className="fg"><label className="fl">Phone</label><input className="fi" value={jf.phone} onChange={e=>setJf(p=>({...p,phone:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input className="fi" value={jf.email} onChange={e=>setJf(p=>({...p,email:e.target.value}))}/></div></div>
-                  <div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={jf.date} onChange={e=>setJf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Value AUD (optional)</label><input className="fi" type="number" value={jf.value||""} onChange={e=>setJf(p=>({...p,value:e.target.value}))}/></div></div>
+                  <div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={jf.date} onChange={e=>setJf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Value AUD</label><input className="fi" type="number" value={jf.value||""} onChange={e=>setJf(p=>({...p,value:e.target.value}))}/></div></div>
                   <div className="fg"><label className="fl">Scope</label><textarea className="fta" style={{minHeight:80}} value={jf.scope} onChange={e=>setJf(p=>({...p,scope:e.target.value}))}/></div>
                   <button className="btn btn-blue btn-sm w-full" onClick={saveJobEdit}>Save Changes</button>
                 </div>
               : <div style={{padding:"4px 16px 12px"}}>
-                  {[["Client",job.client],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
                 </div>
             }
           </div>
@@ -1788,7 +2081,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
             ))}
           </div>
 
-          {/* Notes Log & Photos */}
+          {/* Site Diary */}
           <div className="section-box mb-16">
             <div className="section-box-head">
               <span className="st">Site Notes</span>
@@ -1797,41 +2090,79 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
                   ? <button className="btn btn-xs btn-red" onClick={stopVoiceNote}><Ic n="stop" s={11}/> Stop</button>
                   : <button className="btn btn-ghost btn-xs" onClick={startVoiceNote}><Ic n="mic" s={12}/> Voice</button>
                 }
-                <button className="btn btn-ghost btn-xs" onClick={()=>setShowNote(true)}><Ic n="plus" s={12}/> Note</button>
-                <button className="btn btn-ghost btn-xs" onClick={()=>fileRef.current?.click()}><Ic n="image" s={12}/> Photo</button>
-                <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={handlePhoto}/>
+                <button className="btn btn-ghost btn-xs" onClick={()=>{setShowNote(true);setNoteText("");setNoteDraftPhotos([]);}}><Ic n="plus" s={12}/> Note</button>
               </div>
             </div>
 
-            {/* Live voice recording indicator */}
             {recNote&&<div style={{padding:"10px 16px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
               <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
               <span style={{fontSize:12,color:"var(--red)",flex:1}}>{recText||"Listening…"}</span>
             </div>}
 
-            {/* Notes log — chronological, immutable entries */}
-            <div style={{padding:"0 16px"}}>
-              {(job.notesLog||[]).length===0&&!(job.photos?.length)&&
-                <p style={{fontSize:13,color:"var(--text3)",padding:"14px 0"}}>No notes yet — tap Voice or + Note to add.</p>}
-              {(job.notesLog||[]).map((n,i)=>(
-                <div key={n.id} style={{borderBottom:"1px solid var(--border)",padding:"12px 0"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+            <div>
+              {(job.notesLog||[]).length===0&&
+                <p style={{fontSize:13,color:"var(--text3)",padding:"16px"}}>No notes yet — tap Voice or + Note to add.</p>}
+              {(job.notesLog||[]).map(n=>(
+                <div key={n.id} style={{borderBottom:"1px solid var(--border)",padding:"12px 16px",cursor:"pointer"}} onClick={()=>openEditEntry(n)}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <span style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4}}>{n.date} · {n.time}</span>
                       {n.via==="voice"&&<span style={{fontSize:10,color:"var(--blue)",fontWeight:600,background:"var(--blue-l)",borderRadius:4,padding:"1px 5px"}}>🎙 voice</span>}
                     </div>
-                    <CopyBtn text={n.text}/>
+                    <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>e.stopPropagation()}>
+                      {n.text&&<CopyBtn text={n.text}/>}
+                      <span style={{fontSize:11,color:"var(--text3)"}}>✎</span>
+                    </div>
                   </div>
-                  <p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,margin:0}}>{n.text}</p>
+                  {n.text&&<p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,margin:"0 0 8px 0"}}>{n.text}</p>}
+                  {n.photos&&n.photos.length>0&&(
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}} onClick={e=>e.stopPropagation()}>
+                      {n.photos.map(ph=>(
+                        <div key={ph.id} className="photo-thumb" onClick={()=>setViewDoc({type:"photo",src:ph.src,name:ph.name,isImage:true})} style={{cursor:"pointer"}}>
+                          <img src={ph.src} alt={ph.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        </div>
+                      ))}
+                      {n.photos.length>1&&(
+                        <button className="btn btn-ghost btn-xs" style={{alignSelf:"center"}} onClick={()=>sharePhotos(n.photos,`Photos — ${job.name}`)}>⬆ Share</button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
-              {job.photos?.length>0&&<div className="photo-grid" style={{paddingTop:12}}>
-                {job.photos.map(ph=>(
-                  <div key={ph.id} className="photo-thumb"><img src={ph.src} alt={ph.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>
-                ))}
-              </div>}
             </div>
           </div>
+
+          {/* Note compose modal */}
+          {showNote&&<Mod title="Add Note" onClose={()=>setShowNote(false)}
+            footer={<><button className="btn btn-ghost" onClick={()=>setShowNote(false)}>Cancel</button><button className="btn btn-blue" onClick={saveNote}>Save</button></>}>
+            <textarea className="fta w-full" style={{minHeight:100}} placeholder="What happened on site…" value={noteText} onChange={e=>setNoteText(e.target.value)} autoFocus/>
+            {noteDraftPhotos.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
+              {noteDraftPhotos.map(ph=>(
+                <div key={ph.id} style={{position:"relative"}}>
+                  <img src={ph.src} alt={ph.name} style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                  <button onClick={()=>setNoteDraftPhotos(p=>p.filter(x=>x.id!==ph.id))} style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"var(--red)",color:"#fff",border:"none",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                </div>
+              ))}
+            </div>}
+            <input ref={notePhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleNotePhoto}/>
+            <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>notePhotoRef.current?.click()}><Ic n="image" s={13}/> Attach Photo</button>
+          </Mod>}
+
+          {/* Edit diary entry modal */}
+          {editEntry&&<Mod title="Edit Note" onClose={()=>setEditEntry(null)}
+            footer={<><button className="btn btn-ghost" onClick={()=>setEditEntry(null)}>← Back</button><button className="btn btn-blue" onClick={saveEditEntry}>Save</button></>}>
+            <textarea className="fta w-full" style={{minHeight:100}} value={editEntryText} onChange={e=>setEditEntryText(e.target.value)}/>
+            {editEntryPhotos.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
+              {editEntryPhotos.map(ph=>(
+                <div key={ph.id} style={{position:"relative"}}>
+                  <img src={ph.src} alt={ph.name} style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                  <button onClick={()=>setEditEntryPhotos(p=>p.filter(x=>x.id!==ph.id))} style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"var(--red)",color:"#fff",border:"none",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+                </div>
+              ))}
+            </div>}
+            <input ref={editPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleEditPhoto}/>
+            <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>editPhotoRef.current?.click()}><Ic n="image" s={13}/> Add Photo</button>
+          </Mod>}
         </div>
 
         {/* RIGHT */}
@@ -1841,23 +2172,146 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
             <div className="section-box-head"><span className="st">Workflow Status</span></div>
             {[
               {key:"booked",label:"Booked",hint:"Job confirmed and ready to go"},
-              {key:"cert",label:"Certificate",hint:"Upload document to mark done",upload:true},
-              {key:"invoice",label:"Invoice",hint:"Upload document to mark done",upload:true},
-              {key:"completed",label:"Job Complete",hint:"Requires cert + invoice uploaded first"},
+              {key:"cert",label:"Certificate",hint:"Upload PDF or Word doc to mark done",upload:"cert"},
+              {key:"invoice",label:"Invoice",hint:"Upload PDF or Word doc to mark done",upload:"invoice"},
+              {key:"completed",label:"Job Complete",hint:"Mark when job is fully done"},
             ].map(({key,label,hint,upload})=>(
               <div key={key} className="wf-row">
-                <div className={`wf-check${job.checkboxes[key]?" on":""}`} onClick={()=>toggleWF(key)}>{job.checkboxes[key]&&<Ic n="check" s={12} col="#fff"/>}</div>
-                <div style={{flex:1}}><div className="wf-label">{label}</div><div className="wf-hint">{hint}</div></div>
-                {upload&&!job.checkboxes[key]&&<button className="btn btn-ghost btn-xs" onClick={()=>upd(key==="cert"?{certUploaded:true,checkboxes:{...job.checkboxes,cert:true}}:{invoiceUploaded:true,checkboxes:{...job.checkboxes,invoice:true}})}><Ic n="upload" s={12}/> Upload</button>}
-                {upload&&job.checkboxes[key]&&<span style={{fontSize:11,color:"var(--green)",fontWeight:600}}>✓ Uploaded</span>}
+                <div className={`wf-check${job.checkboxes[key]?" on":""}`}
+                  onClick={()=>toggleWF(key)}
+                  style={{}}>
+                  {job.checkboxes[key]&&<Ic n="check" s={12} col="#fff"/>}
+                </div>
+                <div style={{flex:1}}>
+                  <div className="wf-label" style={{display:"flex",alignItems:"center",gap:6}}>
+                    {label}
+                    {upload==="cert"&&job.checkboxes.completed&&!job.certUploaded&&<span title="No certificate uploaded">⚠️</span>}
+                    {upload==="invoice"&&job.checkboxes.completed&&!job.invoiceUploaded&&<span title="No invoice uploaded">⚠️</span>}
+                  </div>
+                  <div className="wf-hint">{hint}</div>
+                </div>
+                {upload&&!job.checkboxes[key]&&<>
+                  <input ref={upload==="cert"?certFileRef:invFileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{display:"none"}} onChange={e=>handleDocUpload(upload,e)}/>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>(upload==="cert"?certFileRef:invFileRef).current?.click()}><Ic n="upload" s={12}/> Upload</button>
+                </>}
+                {upload&&job.checkboxes[key]&&(() => {
+                  const f=upload==="cert"?job.certFile:job.invFile;
+                  return f
+                    ? <button onClick={()=>setViewDoc({...f,type:upload})} style={{border:"1.5px solid var(--border)",borderRadius:8,padding:"3px 8px",background:"var(--bg)",cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,color:"var(--teal)"}}>
+                        {f.isImage
+                          ? <img src={f.src} alt={f.name} style={{width:28,height:28,objectFit:"cover",borderRadius:4}}/>
+                          : <Ic n="upload" s={14} col="var(--teal)"/>}
+                        View
+                      </button>
+                    : <span style={{fontSize:11,color:"var(--green)",fontWeight:600}}>✓ Uploaded</span>;
+                })()}
               </div>
             ))}
+            {/* Full view modal for cert/invoice */}
+            {viewDoc&&<Mod title={viewDoc.type==="cert"?"Certificate":viewDoc.type==="invoice"?"Invoice":"Photo"} onClose={()=>setViewDoc(null)}
+              footer={<>
+                <button className="btn btn-ghost" onClick={()=>setViewDoc(null)}>← Back</button>
+                <button className="btn btn-ghost" onClick={()=>shareFile(viewDoc.src,viewDoc.name||"file")}><Ic n="download" s={13}/> Save</button>
+                {viewDoc.type!=="photo"&&<a href={`mailto:?subject=${encodeURIComponent((viewDoc.type==="cert"?"Certificate":"Invoice")+" — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the ${viewDoc.type==="cert"?"certificate":"invoice"} for ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 17px",borderRadius:9,background:"var(--blue)",color:"#fff",fontSize:13.5,fontWeight:600,textDecoration:"none"}}>
+                  <Ic n="mail" s={13} col="#fff"/> Email
+                </a>}
+                {viewDoc.type==="photo"&&<a href={`mailto:?subject=${encodeURIComponent("Photo — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the photo from ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 17px",borderRadius:9,background:"var(--blue)",color:"#fff",fontSize:13.5,fontWeight:600,textDecoration:"none"}}>
+                  <Ic n="mail" s={13} col="#fff"/> Email
+                </a>}
+              </>}>
+              <div style={{textAlign:"center"}}>
+                {viewDoc.isImage
+                  ? <img src={viewDoc.src} alt={viewDoc.name} style={{maxWidth:"100%",maxHeight:"60vh",borderRadius:10,objectFit:"contain"}}/>
+                  : <div style={{padding:"32px 16px",background:"var(--bg)",borderRadius:10,textAlign:"center"}}>
+                      <Ic n="upload" s={40} col="var(--teal)"/>
+                      <div style={{marginTop:12,fontWeight:600,fontSize:14}}>{viewDoc.name}</div>
+                      <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>PDF/Word doc — save to device to open</div>
+                    </div>
+                }
+                <div style={{marginTop:12,background:"var(--blue-l)",borderRadius:9,padding:"10px 13px",fontSize:12.5,color:"var(--navy)",fontWeight:600,lineHeight:1.6}}>
+                  💡 <strong>On iPhone:</strong> press and hold the image → tap <strong>Save to Photos</strong>. Then open your email app and attach from your camera roll.
+                </div>
+              </div>
+            </Mod>}
+            {/* Confirm ticking cert/invoice without upload */}
+            {showDocConfirm&&<Mod title={`Mark ${showDocConfirm==="cert"?"Certificate":"Invoice"} as Done?`} onClose={()=>setShowDocConfirm(null)}
+              footer={<><button className="btn btn-ghost" onClick={()=>setShowDocConfirm(null)}>Cancel</button><button className="btn btn-teal" onClick={confirmDocTick}>✓ Mark Done</button></>}>
+              <div style={{padding:"4px 0"}}>
+                <div style={{background:"var(--amber-bg)",borderRadius:9,padding:"10px 13px",fontSize:12.5,color:"#92400E",display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <span>⚠️</span><span>No {showDocConfirm==="cert"?"certificate":"invoice"} file has been uploaded. You can still mark this as done but a hazard warning will show.</span>
+                </div>
+                <p style={{fontSize:13,color:"var(--text2)"}}>Would you like to upload a file instead?</p>
+                <button className="btn btn-ghost btn-sm w-full" style={{marginTop:10}} onClick={()=>{setShowDocConfirm(null);setTimeout(()=>(showDocConfirm==="cert"?certFileRef:invFileRef).current?.click(),100);}}>
+                  <Ic n="upload" s={12}/> Upload {showDocConfirm==="cert"?"Certificate":"Invoice"}
+                </button>
+              </div>
+            </Mod>}
+            {/* Confirm complete modal */}
+            {showCompleteConfirm&&<Mod title="Mark Job Complete?" onClose={()=>setShowCompleteConfirm(false)}
+              footer={<><button className="btn btn-ghost" onClick={()=>setShowCompleteConfirm(false)}>Cancel</button><button className="btn btn-teal" onClick={confirmComplete}>✓ Yes, Complete</button></>}>
+              <p style={{fontSize:13.5,color:"var(--text2)",lineHeight:1.7}}>Are you sure this job is complete?</p>
+              {(!job.certUploaded||!job.invoiceUploaded)&&<div style={{marginTop:12,padding:"10px 13px",background:"var(--amber-bg)",borderRadius:9,fontSize:12.5,color:"#92400E",display:"flex",alignItems:"center",gap:8}}>
+                <span>⚠️</span><span>No {!job.certUploaded?"certificate":""}{!job.certUploaded&&!job.invoiceUploaded?" or ":""}{!job.invoiceUploaded?"invoice":""} uploaded. You can still complete but a hazard will be shown.</span>
+              </div>}
+            </Mod>}
+          </div>
+
+          {/* Cert voice scratchpad — collapsible */}
+          <div className="section-box mb-16">
+            <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowCertNotes(p=>!p)}>
+              <span className="st">Certificate Notes {certText&&<span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
+              <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
+                {showCertNotes&&(docVoice==="cert"
+                  ? <button className="btn btn-xs btn-red" onClick={()=>stopDocVoice("cert")}><Ic n="stop" s={11}/> Stop</button>
+                  : <button className="btn btn-ghost btn-xs" onClick={()=>startDocVoice("cert")} disabled={!!docVoice}><Ic n="mic" s={12}/> Voice</button>
+                )}
+                {certText&&<CopyBtn text={certText}/>}
+                <Ic n={showCertNotes?"chevL":"chevR"} s={14} col="var(--text3)"/>
+              </div>
+            </div>
+            {showCertNotes&&<>
+              {docVoice==="cert"&&<div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+                <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
+                <span style={{fontSize:12,color:"var(--red)"}}>Listening… say "new line" for a line break</span>
+              </div>}
+              <div style={{padding:"12px 14px"}}>
+                <textarea className="fta w-full" style={{minHeight:90,fontSize:13}} placeholder={'Speak or type certificate details…\n\nSay "new line" for a new line, numbers and × supported.'} value={certText}
+                  onChange={e=>{setCertText(e.target.value);upd({certNotes:e.target.value});}}/>
+              </div>
+            </>}
+          </div>
+
+          {/* Invoice voice scratchpad — collapsible */}
+          <div className="section-box mb-16">
+            <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowInvNotes(p=>!p)}>
+              <span className="st">Invoice Notes {invText&&<span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
+              <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
+                {showInvNotes&&(docVoice==="invoice"
+                  ? <button className="btn btn-xs btn-red" onClick={()=>stopDocVoice("invoice")}><Ic n="stop" s={11}/> Stop</button>
+                  : <button className="btn btn-ghost btn-xs" onClick={()=>startDocVoice("invoice")} disabled={!!docVoice}><Ic n="mic" s={12}/> Voice</button>
+                )}
+                {invText&&<CopyBtn text={invText}/>}
+                <Ic n={showInvNotes?"chevL":"chevR"} s={14} col="var(--text3)"/>
+              </div>
+            </div>
+            {showInvNotes&&<>
+              {docVoice==="invoice"&&<div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+                <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
+                <span style={{fontSize:12,color:"var(--red)"}}>Listening… say "new line" for a line break</span>
+              </div>}
+              <div style={{padding:"12px 14px"}}>
+                <textarea className="fta w-full" style={{minHeight:90,fontSize:13}} placeholder={'Speak or type invoice details…\n\nSay "new line" for a new line, "$450" or "four fifty dollars" for amounts.'} value={invText}
+                  onChange={e=>{setInvText(e.target.value);upd({invNotes:e.target.value});}}/>
+              </div>
+            </>}
           </div>
 
           {/* Tasks */}
           <div className="section-box mb-16">
             <div className="section-box-head">
-              <span className="st">Tasks <span style={{fontWeight:400,color:"var(--text3)",fontSize:12,marginLeft:4}}>{openJobTasks.length} open</span></span>
+              <span className="st">Tasks <span style={{fontWeight:400,color:"var(--text3)",fontSize:12,marginLeft:4}}>Things to do for this job</span></span>
               <button className="btn btn-ghost btn-xs" onClick={()=>setShowAddTask(true)}><Ic n="plus" s={12}/> Add</button>
             </div>
             {openJobTasks.length===0&&doneJobTasks.length===0&&<div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No tasks yet</div>}
@@ -1884,7 +2338,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
           {/* Unfinished Items */}
           <div className="section-box">
             <div className="section-box-head">
-              <div><span className="st">Unfinished Items</span>{ufOpen>0&&<span style={{marginLeft:6,fontSize:11.5,color:"var(--amber)",fontWeight:600}}>⚠ {ufOpen} open</span>}</div>
+              <div><span className="st">Unfinished Items</span><span style={{marginLeft:6,fontSize:11,color:"var(--text3)",fontWeight:400}}>Left on site — still to come back to</span>{ufOpen>0&&<span style={{marginLeft:6,fontSize:11.5,color:"var(--amber)",fontWeight:600}}>⚠ {ufOpen} open</span>}</div>
               <button className="btn btn-ghost btn-xs" onClick={()=>setShowUF(true)}><Ic n="plus" s={12}/> Add</button>
             </div>
             {job.unfinished.length===0?<div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No loose ends — all clear.</div>
@@ -1900,15 +2354,15 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
 
       {showAddTask&&<Mod title="Add Task" onClose={()=>setShowAddTask(false)}
         footer={<><button className="btn btn-ghost" onClick={()=>setShowAddTask(false)}>Cancel</button><button className="btn btn-blue" onClick={addTask}>Add Task</button></>}>
-        <div className="fg"><label className="fl">Task Title *</label><input className="fi" value={tf.title} onChange={e=>setTf(f=>({...f,title:e.target.value}))} placeholder="What needs doing?"/></div>
+        <div className="fg"><label className="fl">What needs doing?</label><input className="fi" value={tf.title} onChange={e=>setTf(f=>({...f,title:e.target.value}))} placeholder="e.g. Call Marcus re: cable order" autoFocus/></div>
+        <JobSearchInput jobs={jobs} value={tf.jobId||""} onChange={(id)=>setTf(f=>({...f,jobId:id}))}/>
         <div className="fr">
           <div className="fg"><label className="fl">Priority</label><select className="fs" value={tf.priority} onChange={e=>setTf(f=>({...f,priority:e.target.value}))}><option value="P1">P1 — Urgent</option><option value="P2">P2 — High</option><option value="P3">P3 — Low</option></select></div>
           <div className="fg"><label className="fl">Assigned To</label><select className="fs" value={tf.assignedTo} onChange={e=>setTf(f=>({...f,assignedTo:e.target.value}))}>{TEAM_MEMBERS.map(m=><option key={m}>{m}</option>)}</select></div>
         </div>
-        <div className="fg"><label className="fl">Due Date</label><input type="date" className="fi" value={tf.dueDate} onChange={e=>setTf(f=>({...f,dueDate:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Due Date (optional)</label><input type="date" className="fi" value={tf.dueDate} onChange={e=>setTf(f=>({...f,dueDate:e.target.value}))}/></div>
       </Mod>}
-      {showNote&&<Mod title="Add Note" onClose={()=>setShowNote(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNote(false)}>Cancel</button><button className="btn btn-blue" onClick={()=>addNote(noteText)}>Save</button></>}><textarea className="fta w-full" style={{minHeight:120}} placeholder="Add your note…" value={noteText} onChange={e=>setNoteText(e.target.value)} autoFocus/></Mod>}
-      {showUF&&<Mod title="Add Unfinished Item" onClose={()=>setShowUF(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowUF(false)}>Cancel</button><button className="btn btn-blue" onClick={addUF}>Add</button></>}><input className="fi w-full" value={ufText} onChange={e=>setUfText(e.target.value)} placeholder="e.g. Return to fix socket in loft…" autoFocus/></Mod>}
+      {showUF&&<Mod title="Add Unfinished Item" onClose={()=>setShowUF(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowUF(false)}>Cancel</button><button className="btn btn-blue" onClick={addUF}>Add</button></>}><input className="fi w-full" value={ufText} onChange={e=>setUfText(e.target.value)} placeholder="e.g. Return to fit cover plate in loft" autoFocus/></Mod>}
     </div>
   );
 };
@@ -1917,11 +2371,11 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
 const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
   const [f,setF]=useState({name:prefill?.name||"",client:prefill?.name||"",address:prefill?.address||"",phone:prefill?.phone||"",email:prefill?.email||"",scope:prefill?.scope||"",notes:"",value:"",date:"",type:""});
   const sub=()=>{
-    if(!f.name.trim()&&!f.client.trim())return;
+    if(!f.address.trim()&&!f.client.trim()&&!f.scope.trim())return;
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
-    const name=f.name||`${f.client} Job`;
+    const name=f.address||f.client||"New Job";
     const scopeItems=f.scope?f.scope.split(/[.!?]+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false})):[];
-    const nj={id:`J${uid()}`,ref,name,client:f.client,address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"upcoming",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
+    const nj={id:`J${uid()}`,ref,name,client:f.client,builder:f.builder||"",address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"upcoming",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,certNotes:"",invNotes:"",tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
     onCreated(nj);
   };
   return (
@@ -1933,12 +2387,12 @@ const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
       {prefill&&<div className="hint mb-16"><Ic n="alert" s={16}/><span>Pre-filled from client intake — review before saving.</span></div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="twocol">
         <div className="card p-20">
-          <div className="st mb-12">Client & Job Info</div>
-          <div className="fg"><label className="fl">Job Name *</label><input className="fi" placeholder="e.g. Webb House Rewire" value={f.name} onChange={e=>setF(p=>({...p,name:e.target.value}))}/></div>
-          <div className="fr"><div className="fg"><label className="fl">Client Name</label><input className="fi" value={f.client} onChange={e=>setF(p=>({...p,client:e.target.value}))}/></div><div className="fg"><label className="fl">Job Type</label><input className="fi" placeholder="e.g. Rewire" value={f.type} onChange={e=>setF(p=>({...p,type:e.target.value}))}/></div></div>
-          <div className="fg"><label className="fl">Address</label><input className="fi" value={f.address} onChange={e=>setF(p=>({...p,address:e.target.value}))}/></div>
-          <div className="fr"><div className="fg"><label className="fl">Phone</label><input className="fi" value={f.phone} onChange={e=>setF(p=>({...p,phone:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input className="fi" value={f.email} onChange={e=>setF(p=>({...p,email:e.target.value}))}/></div></div>
-          <div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={f.date} onChange={e=>setF(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Value AUD (optional)</label><input type="number" className="fi" placeholder="0" value={f.value} onChange={e=>setF(p=>({...p,value:e.target.value}))}/></div></div>
+          <div className="st mb-12">Job Info</div>
+          <div className="fg"><label className="fl">Address</label><input className="fi" placeholder="e.g. 14 Birchwood Ave, Northside" value={f.address} onChange={e=>setF(p=>({...p,address:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Customer</label><input className="fi" placeholder="e.g. Marcus Webb" value={f.client} onChange={e=>setF(p=>({...p,client:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Builder (optional)</label><input className="fi" placeholder="e.g. Hargreaves Build Co." value={f.builder||""} onChange={e=>setF(p=>({...p,builder:e.target.value}))}/></div>
+          <div className="fr"><div className="fg"><label className="fl">Phone</label><input className="fi" placeholder="e.g. 0400 123 456" value={f.phone} onChange={e=>setF(p=>({...p,phone:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input className="fi" value={f.email} onChange={e=>setF(p=>({...p,email:e.target.value}))}/></div></div>
+          <div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={f.date} onChange={e=>setF(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Value AUD</label><input type="number" className="fi" placeholder="0" value={f.value} onChange={e=>setF(p=>({...p,value:e.target.value}))}/></div></div>
         </div>
         <div className="card p-20">
           <div className="st mb-12">Scope & Notes</div>
@@ -2107,7 +2561,7 @@ const WorkersPage = ({workers,setWorkers,jobs}) => {
       </div>
       {workers.length===0&&<div className="card em"><Ic n="workers" s={32} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No workers yet</p></div>}
       {showNew&&<Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}><div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice, VA" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div></Mod>}
-      {selW&&<Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div><div className="fg"><label className="fl">Link to Job</label><select className="fs" value={hf.jobId} onChange={e=>setHf(p=>({...p,jobId:e.target.value}))}><option value="">— No job —</option>{jobs.map(j=><option key={j.id} value={j.id}>{j.ref} · {j.name}</option>)}</select></div></Mod>}
+      {selW&&<Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div><JobSearchInput jobs={jobs} value={hf.jobId||""} onChange={(id)=>setHf(p=>({...p,jobId:id}))} label="Link to Job"/></Mod>}
     </div>
   );
 };
@@ -2188,6 +2642,358 @@ const AccountPage = ({logoUrl, setLogoUrl}) => {
 };
 
 // ─── MEMOS LIST ───────────────────────────────────────────────────────────────
+// ─── SWMS PAGE ────────────────────────────────────────────────────────────────
+const TRADE_HAZARDS = [
+  {id:"h01",label:"Working at heights (ladders, scaffolding, roofs, elevated platforms)",controls:"Inspect equipment before use. Maintain 3 points of contact on ladders. Use fall arrest where required. Never overreach. Spotter required above 2m."},
+  {id:"h02",label:"Manual handling (lifting heavy materials, awkward loads)",controls:"Use mechanical aids where possible. Team lift for items over 16kg. Assess load before lifting. Keep back straight, bend knees."},
+  {id:"h03",label:"Working with power tools and hand tools",controls:"Inspect tools before use. Use correct tool for the task. Wear appropriate PPE. Guard in place at all times. Disconnect power before blade changes."},
+  {id:"h04",label:"Working near live electrical conductors or services",controls:"Identify and isolate services before work. Test dead before touching. Use insulated tools. Maintain safe approach distances."},
+  {id:"h05",label:"Exposure to dust, fumes or hazardous substances",controls:"Use RPE/dust mask as required. Ensure adequate ventilation. Check SDS for materials used. Wet cut where possible."},
+  {id:"h06",label:"Working in confined spaces (roof cavities, pits, tanks)",controls:"Atmospheric testing required. Spotter/standby person mandatory. Never work alone. Have rescue plan in place."},
+  {id:"h07",label:"Exposure to asbestos containing materials (pre-1990 buildings)",controls:"Stop work immediately if suspected ACM identified. Do not disturb. Engage licensed assessor. Notify principal contractor."},
+  {id:"h08",label:"Slips, trips and falls on the same level",controls:"Keep work area clear of tools and materials. Secure cords and hoses. Wear appropriate footwear. Use wet floor signage."},
+  {id:"h09",label:"Working in hot or cold environments",controls:"Hydrate regularly. Schedule rest breaks. Monitor for heat/cold stress symptoms. Adjust work schedule to avoid extreme conditions."},
+  {id:"h10",label:"Traffic management (working near vehicles or roads)",controls:"Establish exclusion zones. Use spotters. Wear high-visibility PPE. Obtain traffic management plan if required."},
+  {id:"h11",label:"Excavation and trenching",controls:"Call Dial Before You Dig. Shore sides as required. No personnel in unsupported excavation over 1.5m. Inspect after rain."},
+  {id:"h12",label:"Working with or near plant and heavy machinery",controls:"Exclusion zones around operating plant. Communicate with operators. Never walk behind reversing machinery. Wear hi-vis."},
+  {id:"h13",label:"Noise (power tools, machinery, demolition)",controls:"Use hearing protection when noise exceeds 85dB. Limit exposure time. Use quieter tools where possible."},
+  {id:"h14",label:"UV radiation / working outdoors",controls:"Apply SPF50+ sunscreen. Wear hat and long sleeves. Schedule outdoor work in cooler parts of the day where possible."},
+  {id:"h15",label:"Working alone or in remote locations",controls:"Advise someone of location and check-in times. Carry communication device. Have emergency plan in place."},
+];
+
+const HRCW_ITEMS = [
+  "Risk of a person falling more than 2 metres",
+  "Work on a telecommunication tower",
+  "Demolition of load-bearing structures",
+  "Work involving disturbance of asbestos",
+  "Work in or adjacent to a road or railway used by traffic",
+  "Work in or near water or other liquid involving risk of drowning",
+  "Diving work",
+  "Work in an area where there is movement of powered mobile plant",
+  "Work in a confined space",
+  "Work at a mine (including an underground mine)",
+  "Removing or disturbing friable asbestos",
+  "Work involving structural alterations requiring temporary support",
+];
+
+const PPE_ITEMS = ["Hard hat","Safety glasses / goggles","High-visibility vest","Steel-capped boots","Gloves","Ear protection","Dust/P2 mask","Full face shield","Harness / fall arrest","Knee pads","Sunscreen / hat","Wet weather gear"];
+
+const SWMSPage = ({jobs, logoUrl}) => {
+  const todayStr = new Date().toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const [f, setF] = useState({
+    companyName:"", jobAddress:"", customer:"", builder:"",
+    date:todayStr, scope:"", tradeType:"",
+    hrcw:[], ppe:[], plant:"",
+    selectedHazards:TRADE_HAZARDS.map(h=>h.id),
+    additionalHazards:"",
+    workers:["","","","","",""],
+    reviewedBy:"", reviewDate:todayStr,
+    preparedBy:"",
+  });
+  const [pullJob,setPullJob]=useState("");
+  const [generating,setGenerating]=useState(false);
+
+  const handlePullJob=jobId=>{
+    setPullJob(jobId);
+    const job=jobs.find(j=>j.id===jobId);
+    if(job) setF(p=>({...p,jobAddress:job.address||"",customer:job.client||"",builder:job.builder||"",scope:job.scope||""}));
+  };
+  const toggleHazard=id=>setF(p=>({...p,selectedHazards:p.selectedHazards.includes(id)?p.selectedHazards.filter(h=>h!==id):[...p.selectedHazards,id]}));
+  const toggleHRCW=item=>setF(p=>({...p,hrcw:p.hrcw.includes(item)?p.hrcw.filter(h=>h!==item):[...p.hrcw,item]}));
+  const togglePPE=item=>setF(p=>({...p,ppe:p.ppe.includes(item)?p.ppe.filter(h=>h!==item):[...p.ppe,item]}));
+  const setWorker=(i,val)=>setF(p=>{const w=[...p.workers];w[i]=val;return{...p,workers:w};});
+  const activeHazards=TRADE_HAZARDS.filter(h=>f.selectedHazards.includes(h.id));
+
+  const generatePDF=()=>{
+    setGenerating(true);
+    const canvas=document.createElement("canvas");
+    const scale=2;
+    canvas.width=794*scale;
+    canvas.height=1123*scale*(Math.ceil(activeHazards.length/3)+4);
+    const ctx=canvas.getContext("2d");
+    ctx.scale(scale,scale);
+    const W=794;
+    let y=20;
+    const ml=40,mr=W-40,cw=W-80;
+
+    const line=(text,x,yy,size,weight,color,align)=>{
+      ctx.font=`${weight||"normal"} ${size||12}px Arial`;
+      ctx.fillStyle=color||"#111";
+      ctx.textAlign=align||"left";
+      ctx.fillText(text,x,yy);
+      ctx.textAlign="left";
+    };
+    const rect=(x,yy,w,h,fill,stroke)=>{
+      if(fill){ctx.fillStyle=fill;ctx.fillRect(x,yy,w,h);}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.strokeRect(x,yy,w,h);}
+    };
+    const wrap=(text,x,yy,maxW,size)=>{
+      ctx.font=`${size||11}px Arial`;
+      const words=text.split(" ");let line2="";let ly=yy;
+      words.forEach(w=>{
+        const test=line2?line2+" "+w:w;
+        if(ctx.measureText(test).width>maxW&&line2){
+          ctx.fillText(line2,x,ly);line2=w;ly+=size?size+3:14;
+        } else line2=test;
+      });
+      if(line2){ctx.fillText(line2,x,ly);ly+=size?size+3:14;}
+      return ly;
+    };
+
+    // Header background
+    rect(0,0,W,60,"#0F2B3D");
+    if(logoUrl){
+      const img=new Image();img.src=logoUrl;
+      try{ctx.drawImage(img,ml,8,120,44);}catch(e){}
+    }
+    line("SAFE WORK METHOD STATEMENT",logoUrl?180:ml,22,14,"bold","#fff");
+    line(f.companyName||"",logoUrl?180:ml,40,11,"normal","#2BA890");
+    line(`Date: ${f.date}  |  ${f.tradeType||"General Construction"}`,mr,40,10,"normal","#aaa","right");
+
+    y=75;
+    // Job Details box
+    rect(ml,y,cw,100,"#f8f9fa","#ddd");
+    line("JOB DETAILS",ml+8,y+14,10,"bold","#0F2B3D");
+    line(`Site Address: ${f.jobAddress||"—"}`,ml+8,y+30,11);
+    line(`Customer: ${f.customer||"—"}`,ml+8,y+46,11);
+    line(`Builder / Principal Contractor: ${f.builder||"—"}`,ml+8,y+62,11);
+    y=wrap(`Scope of Work: ${f.scope||"—"}`,ml+8,y+78,cw-20,11);
+    y+=20;
+
+    // HRCW
+    if(f.hrcw.length>0){
+      rect(ml,y,cw,16,"#fff3cd");
+      line("HIGH RISK CONSTRUCTION WORK IDENTIFIED:",ml+8,y+12,9,"bold","#856404");
+      y+=20;
+      f.hrcw.forEach(item=>{
+        y=wrap(`• ${item}`,ml+8,y,cw-20,10);
+        y+=2;
+      });
+      y+=8;
+    }
+
+    // PPE
+    if(f.ppe.length>0){
+      rect(ml,y,cw,14,"#e8f7f4");
+      line("REQUIRED PPE:",ml+8,y+11,9,"bold","#1E8A75");
+      y+=18;
+      const ppeText=f.ppe.join("  •  ");
+      y=wrap(ppeText,ml+8,y,cw-20,10);
+      y+=8;
+    }
+
+    // Plant
+    if(f.plant.trim()){
+      rect(ml,y,cw,14,"#f0f2f8");
+      line("PLANT & EQUIPMENT:",ml+8,y+11,9,"bold","#1B2B6B");
+      y+=18;
+      y=wrap(f.plant,ml+8,y,cw-20,10);
+      y+=8;
+    }
+
+    // Hazards table
+    rect(ml,y,cw,16,"#0F2B3D");
+    line("HAZARD",ml+8,y+12,9,"bold","#fff");
+    line("CONTROL MEASURES",ml+8+cw*0.45,y+12,9,"bold","#fff");
+    y+=16;
+    activeHazards.forEach((h,i)=>{
+      const bg=i%2===0?"#fff":"#f8f9fa";
+      const startY=y;
+      rect(ml,y,cw,4,bg);
+      const colW=cw*0.44;
+      const h1end=wrap(h.label,ml+8,y+12,colW-10,10);
+      const h2end=wrap(h.controls,ml+8+cw*0.45,startY+12,colW,10);
+      const rowH=Math.max(h1end,h2end)-startY+8;
+      rect(ml,startY,cw,rowH,bg,"#e5e7eb");
+      ctx.fillStyle="#111";ctx.font="10px Arial";
+      wrap(h.label,ml+8,startY+12,colW-10,10);
+      wrap(h.controls,ml+8+cw*0.45,startY+12,colW,10);
+      y=startY+rowH;
+    });
+
+    if(f.additionalHazards.trim()){
+      y+=4;
+      rect(ml,y,cw,14,"#fff9db");
+      line("ADDITIONAL HAZARDS / NOTES:",ml+8,y+11,9,"bold","#7c5c00");
+      y+=18;
+      y=wrap(f.additionalHazards,ml+8,y,cw-20,10);
+      y+=8;
+    }
+
+    y+=8;
+    // Worker sign-on
+    rect(ml,y,cw,14,"#0F2B3D");
+    line("WORKER ACKNOWLEDGEMENT — All workers listed have read and understood this SWMS",ml+8,y+11,9,"bold","#fff");
+    y+=16;
+    const filledWorkers=f.workers.filter(w=>w.trim());
+    (filledWorkers.length?filledWorkers:["Worker 1","Worker 2"]).forEach((w,i)=>{
+      rect(ml,y,cw/2,28,"#f8f9fa","#ddd");
+      rect(ml+cw/2,y,cw/2,28,"#fff","#ddd");
+      line(`${i+1}. ${w||""}`,ml+8,y+12,10,"bold");
+      line("Signature: ___________________________",ml+cw/2+8,y+18,10,"normal","#666");
+      y+=28;
+    });
+
+    y+=12;
+    // Review & Declaration
+    rect(ml,y,cw,60,"#f8f9fa","#ddd");
+    line("REVIEW & DECLARATION",ml+8,y+14,10,"bold","#0F2B3D");
+    line(`Reviewed by: ${f.reviewedBy||"___________________________"}`,ml+8,y+30,10);
+    line(`Review date: ${f.reviewDate||todayStr}`,ml+8,y+46,10);
+    line(`Prepared by: ${f.preparedBy||"___________________________"}`,ml+cw/2,y+30,10);
+    line(`Date: ${f.date}`,ml+cw/2,y+46,10);
+    y+=70;
+
+    line("This SWMS was prepared in accordance with the Work Health and Safety Act 2011 and WHS Regulations 2011 (Australia).",ml,y,8,"normal","#999");
+
+    // Resize canvas to actual content
+    const finalCanvas=document.createElement("canvas");
+    finalCanvas.width=canvas.width;
+    finalCanvas.height=Math.ceil(y+40)*scale;
+    finalCanvas.getContext("2d").drawImage(canvas,0,0);
+
+    finalCanvas.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=`SWMS_${(f.jobAddress||"job").replace(/[^a-z0-9]/gi,"_")}_${f.date.replace(/\//g,"-")}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setGenerating(false);
+    },"image/png");
+  };
+
+  const Tick=({checked,onToggle})=>(
+    <div onClick={onToggle} style={{width:20,height:20,borderRadius:4,border:`2px solid ${checked?"var(--teal)":"var(--border2)"}`,background:checked?"var(--teal)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
+      {checked&&<Ic n="check" s={11} col="#fff"/>}
+    </div>
+  );
+
+  return (
+    <div className="page">
+      <div className="mb-20">
+        <h1 style={{fontSize:20,fontWeight:700}}>SWMS</h1>
+        <p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>Safe Work Method Statement — any trade</p>
+      </div>
+
+      {logoUrl&&<div style={{textAlign:"center",marginBottom:16}}>
+        <img src={logoUrl} alt="logo" style={{maxHeight:48,maxWidth:160,objectFit:"contain"}}/>
+      </div>}
+
+      {/* Pull from job */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Pull from Job (optional)</span></div>
+        <div style={{padding:"12px 14px"}}>
+          <select className="fs w-full" value={pullJob} onChange={e=>handlePullJob(e.target.value)}>
+            <option value="">— Select a job to pre-fill —</option>
+            {jobs.map(j=><option key={j.id} value={j.id}>{j.address||j.name} · {j.client}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Job Details */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Job Details</span></div>
+        <div style={{padding:"12px 14px"}}>
+          <div className="fr">
+            <div className="fg"><label className="fl">Company Name</label><input className="fi" value={f.companyName} onChange={e=>setF(p=>({...p,companyName:e.target.value}))}/></div>
+            <div className="fg"><label className="fl">Trade Type</label><input className="fi" placeholder="e.g. Electrical, Plumbing" value={f.tradeType} onChange={e=>setF(p=>({...p,tradeType:e.target.value}))}/></div>
+          </div>
+          <div className="fg"><label className="fl">Site Address</label><input className="fi" value={f.jobAddress} onChange={e=>setF(p=>({...p,jobAddress:e.target.value}))}/></div>
+          <div className="fr">
+            <div className="fg"><label className="fl">Customer</label><input className="fi" value={f.customer} onChange={e=>setF(p=>({...p,customer:e.target.value}))}/></div>
+            <div className="fg"><label className="fl">Builder / Principal Contractor</label><input className="fi" value={f.builder} onChange={e=>setF(p=>({...p,builder:e.target.value}))}/></div>
+          </div>
+          <div className="fg"><label className="fl">Date</label><input className="fi" value={f.date} onChange={e=>setF(p=>({...p,date:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Scope of Work</label><textarea className="fta" style={{minHeight:70}} value={f.scope} onChange={e=>setF(p=>({...p,scope:e.target.value}))} placeholder="Describe the work being performed…"/></div>
+        </div>
+      </div>
+
+      {/* HRCW */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">High Risk Construction Work</span><span style={{fontSize:11,color:"var(--text3)"}}>tick all that apply</span></div>
+        <div style={{padding:"8px 14px"}}>
+          {HRCW_ITEMS.map(item=>(
+            <div key={item} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:"1px solid var(--border)",cursor:"pointer"}} onClick={()=>toggleHRCW(item)}>
+              <Tick checked={f.hrcw.includes(item)} onToggle={()=>toggleHRCW(item)}/>
+              <span style={{fontSize:12.5,color:"var(--text2)"}}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* PPE */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Required PPE</span><span style={{fontSize:11,color:"var(--text3)"}}>tick all required</span></div>
+        <div style={{padding:"8px 14px",display:"flex",flexWrap:"wrap",gap:8}}>
+          {PPE_ITEMS.map(item=>(
+            <div key={item} onClick={()=>togglePPE(item)} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${f.ppe.includes(item)?"var(--teal)":"var(--border)"}`,background:f.ppe.includes(item)?"var(--teal-l)":"#fff",cursor:"pointer",fontSize:12}}>
+              <Tick checked={f.ppe.includes(item)} onToggle={()=>togglePPE(item)}/>
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Plant & Equipment */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Plant & Equipment</span></div>
+        <div style={{padding:"12px 14px"}}>
+          <textarea className="fta w-full" style={{minHeight:60}} placeholder="List tools and equipment being used on this job…" value={f.plant} onChange={e=>setF(p=>({...p,plant:e.target.value}))}/>
+        </div>
+      </div>
+
+      {/* Hazards */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Hazards & Control Measures</span><span style={{fontSize:11,color:"var(--text3)"}}>{activeHazards.length} selected</span></div>
+        {TRADE_HAZARDS.map(h=>(
+          <div key={h.id} style={{padding:"10px 16px",borderBottom:"1px solid var(--border)",display:"flex",gap:12,alignItems:"flex-start",cursor:"pointer"}} onClick={()=>toggleHazard(h.id)}>
+            <Tick checked={f.selectedHazards.includes(h.id)} onToggle={()=>toggleHazard(h.id)}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>{h.label}</div>
+              {f.selectedHazards.includes(h.id)&&<div style={{fontSize:11.5,color:"var(--text3)",lineHeight:1.5}}>{h.controls}</div>}
+            </div>
+          </div>
+        ))}
+        <div style={{padding:"12px 14px"}}>
+          <label className="fl">Additional Hazards / Notes</label>
+          <textarea className="fta w-full" style={{minHeight:60}} placeholder="Any site-specific hazards not listed above…" value={f.additionalHazards} onChange={e=>setF(p=>({...p,additionalHazards:e.target.value}))}/>
+        </div>
+      </div>
+
+      {/* Worker Sign-On */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Worker Acknowledgement</span><span style={{fontSize:11,color:"var(--text3)"}}>up to 6 workers</span></div>
+        <div style={{padding:"12px 14px"}}>
+          <p style={{fontSize:12,color:"var(--text3)",marginBottom:12}}>All workers listed confirm they have read and understood this SWMS.</p>
+          {f.workers.map((w,i)=>(
+            <input key={i} className="fi" style={{marginBottom:8}} placeholder={`Worker ${i+1} full name`} value={w} onChange={e=>setWorker(i,e.target.value)}/>
+          ))}
+        </div>
+      </div>
+
+      {/* Review & Declaration */}
+      <div className="section-box mb-16">
+        <div className="section-box-head"><span className="st">Review & Declaration</span></div>
+        <div style={{padding:"12px 14px"}}>
+          <div className="fr">
+            <div className="fg"><label className="fl">Prepared by</label><input className="fi" value={f.preparedBy} onChange={e=>setF(p=>({...p,preparedBy:e.target.value}))}/></div>
+            <div className="fg"><label className="fl">Review date</label><input className="fi" value={f.reviewDate} onChange={e=>setF(p=>({...p,reviewDate:e.target.value}))}/></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Generate PDF */}
+      <button onClick={generatePDF} disabled={generating} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"14px",borderRadius:12,background:generating?"var(--text3)":"var(--teal)",color:"#fff",fontSize:15,fontWeight:700,border:"none",cursor:generating?"not-allowed":"pointer",width:"100%",marginBottom:10,fontFamily:"'Inter',sans-serif"}}>
+        <Ic n="download" s={16} col="#fff"/>{generating?"Generating PDF…":"Save SWMS as PDF"}
+      </button>
+      <p style={{fontSize:11.5,color:"var(--text3)",textAlign:"center",lineHeight:1.6,marginBottom:24}}>
+        💡 Save to your camera roll → open email app → attach and send.<br/>
+        Form clears when you leave this page.
+      </p>
+    </div>
+  );
+};
+
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [nav,setNav]=useState("dashboard");
@@ -2239,7 +3045,7 @@ export default function App() {
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const name=jobEdit.name||jobEdit.client||"New Job";
     const scopeItems=(jobEdit.scope||"").split(/[.!?]+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
-    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"upcoming",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
+    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",builder:jobEdit.builder||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"upcoming",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,certNotes:"",invNotes:"",tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
     setJobs(p=>[nj,...p]);
     setSelJobId(nj.id);setJobsMode("detail");setNav("jobs");
   };
@@ -2264,7 +3070,7 @@ export default function App() {
   const selJob=jobs.find(j=>j.id===selJobId);
   const pageLabel=nav==="jobs"?(jobsMode==="create"?"Create Job":jobsMode==="detail"?"Job Detail":"Jobs")
     :nav==="intake"?"Client Intake Form":nav==="inbox"?"Capture Inbox"
-    :({dashboard:"Dashboard",tasks:"Tasks",reminders:"Reminders",assets:"Assets",workers:"Workers",account:"Account"})[nav]||"";
+    :({dashboard:"Home",tasks:"Tasks",reminders:"Reminders",assets:"Assets",workers:"Workers",account:"Account",swms:"SWMS"})[nav]||"";
 
   const render=()=>{
     const back=()=>go("dashboard");
@@ -2278,6 +3084,7 @@ export default function App() {
     if(nav==="reminders") return <RemindersPage reminders={reminders} setReminders={setReminders} tasks={tasks} setTasks={setTasks} jobs={jobs} onAddNote={()=>setShowAddTask(true)}/>;
     if(nav==="assets") return <AssetsPage assets={assets} setAssets={setAssets}/>;
     if(nav==="workers") return <WorkersPage workers={workers} setWorkers={setWorkers} jobs={jobs}/>;
+    if(nav==="swms") return <SWMSPage jobs={jobs} logoUrl={logoUrl}/>;
     if(nav==="intake") return <IntakePage onClose={()=>setNav("dashboard")}/>;
     if(nav==="inbox") return <InboxPage inbox={inbox} setInbox={setInbox} tasks={tasks} setTasks={setTasks} reminders={reminders} setReminders={setReminders} jobs={jobs} onNav={go}/>;
     if(nav==="account") return <AccountPage logoUrl={logoUrl} setLogoUrl={setLogoUrl}/>;
@@ -2285,9 +3092,9 @@ export default function App() {
   };
 
   const navGroups=[
-    {label:null,items:[{id:"dashboard",icon:"dashboard",label:"Dashboard"}]},
+    {label:null,items:[{id:"dashboard",icon:"dashboard",label:"Home"}]},
     {label:"Work",items:[{id:"jobs",icon:"jobs",label:"Jobs"},{id:"tasks",icon:"tasks",label:"Tasks",badge:openCount},{id:"reminders",icon:"reminders",label:"Reminders",badge:remCount}]},
-    {label:"Operations",items:[{id:"assets",icon:"assets",label:"Assets"},{id:"workers",icon:"workers",label:"Workers"}]},
+    {label:"Operations",items:[{id:"assets",icon:"assets",label:"Assets"},{id:"workers",icon:"workers",label:"Workers"},{id:"swms",icon:"upload",label:"SWMS"}]},
     {label:"Account",items:[{id:"account",icon:"account",label:"Account"}]},
   ];
 
@@ -2322,8 +3129,8 @@ export default function App() {
           </nav>
           <div className="sb-user" onClick={()=>go("account")}>
             <div className="av" style={{width:36,height:36}}>{ini(ACCOUNT.name)}<div className="av-dot"/></div>
-            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{ACCOUNT.name}</div><div style={{fontSize:11.5,color:"var(--text3)"}}>{ACCOUNT.trade}</div></div>
-            <Ic n="settings" s={15} col="var(--text3)"/>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{ACCOUNT.name}</div><div style={{fontSize:11.5,color:"rgba(255,255,255,.5)"}}>{ACCOUNT.trade}</div></div>
+            <Ic n="settings" s={15} col="rgba(255,255,255,.4)"/>
           </div>
         </aside>
 
@@ -2378,6 +3185,7 @@ export default function App() {
         onAddToJob={handleAddToJob}
       />}
       {showAddTask&&<AddTaskModal
+        jobs={jobs}
         onVoice={()=>openCapture("voice")}
         onCreateJob={handleCreateJob}
         onSaveTask={handleSaveTask}
