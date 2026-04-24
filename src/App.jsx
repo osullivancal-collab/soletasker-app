@@ -2631,7 +2631,6 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               </div>
             </div>}
           </div>
-          </div>
         </div>
       </div>
 
