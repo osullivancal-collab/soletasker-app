@@ -3490,7 +3490,7 @@ export default function App() {
         </main>
       </div>
 
-      {showCapture showCapture&& <CaptureModalshowCapture&& <CaptureModal <CaptureModal
+      {showCapture && <CaptureModal
         mode={captureMode}
         jobs={jobs}
         onClose={()=>setShowCapture(false)}
