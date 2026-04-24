@@ -456,7 +456,7 @@ const Mod = ({title, children, footer, onClose, lg}) => (
     <div className={`mw${lg?" mw-lg":""}`}>
       <div className="mh"><span className="mt2">{title}</span><button className="xbtn" onClick={onClose}><Ic n="close" s={14}/></button></div>
       <div className="mb2">{children}</div>
-      {footer&&<div className="mf">{footer}</div>}
+      {footer&& <div className="mf">{footer}</div>}
     </div>
   </div>
 );
@@ -501,11 +501,11 @@ const JobTags = ({job}) => {
   const missing=done&&(!job.certUploaded||!job.invoiceUploaded);
   return (
     <div className="flex gap-8" style={{flexWrap:"wrap"}}>
-      {job.checkboxes?.booked&&<span className="jtag jtag-booked">BOOKED</span>}
-      {job.checkboxes?.cert&&<span className="jtag jtag-cert">CERT ✓</span>}
-      {job.checkboxes?.invoice&&<span className="jtag jtag-inv">INV ✓</span>}
-      {job.checkboxes?.completed&&<span className="jtag jtag-done">DONE</span>}
-      {missing&&<span className="jtag jtag-missing">⚠ MISSING DOCS</span>}
+      {job.checkboxes?.booked&& <span className="jtag jtag-booked">BOOKED</span>}
+      {job.checkboxes?.cert&& <span className="jtag jtag-cert">CERT ✓</span>}
+      {job.checkboxes?.invoice&& <span className="jtag jtag-inv">INV ✓</span>}
+      {job.checkboxes?.completed&& <span className="jtag jtag-done">DONE</span>}
+      {missing&& <span className="jtag jtag-missing">⚠ MISSING DOCS</span>}
     </div>
   );
 };
@@ -627,7 +627,7 @@ const JobSearchInput = ({jobs=[], value, onChange, label="Link to Job (optional)
           placeholder={placeholder}
           style={{paddingRight:28}}
         />
-        {query&&<button onClick={clear} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:15,color:"var(--text3)",lineHeight:1}}>×</button>}
+        {query&& <button onClick={clear} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:15,color:"var(--text3)",lineHeight:1}}>×</button>}
       </div>
       {open&&filtered.length>0&&(
         <div style={{position:"absolute",zIndex:200,top:"100%",left:0,right:0,background:"#fff",border:"1px solid var(--border)",borderRadius:9,boxShadow:"0 4px 16px rgba(0,0,0,.1)",marginTop:2,overflow:"hidden"}}>
@@ -637,12 +637,12 @@ const JobSearchInput = ({jobs=[], value, onChange, label="Link to Job (optional)
               onMouseEnter={e=>e.currentTarget.style.background="var(--bg)"}
               onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
               <div style={{fontWeight:600,color:"var(--navy)"}}>{j.address||j.name}</div>
-              {j.client&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{j.client}</div>}
+              {j.client&& <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{j.client}</div>}
             </div>
           ))}
         </div>
       )}
-      {selected&&<div style={{fontSize:11,color:"var(--teal2)",marginTop:3,fontWeight:600}}>✓ Linked to {selected.address||selected.name}</div>}
+      {selected&& <div style={{fontSize:11,color:"var(--teal2)",marginTop:3,fontWeight:600}}>✓ Linked to {selected.address||selected.name}</div>}
     </div>
   );
 };
@@ -765,13 +765,13 @@ const WorkOrderScanner = ({onClose, onJobPrefill}) => {
         ))}
       </div>
 
-      {tab==="text"&&<>
+      {tab==="text"&& <>
         <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:10,lineHeight:1.5}}>Copy the work order text from your email and paste it below. AI extracts all job details.</p>
         <textarea className="fta w-full" style={{minHeight:160,fontSize:12.5}} placeholder={"Paste work order text here…\n\nTip: In Gmail/Mail, select all text in the email, copy, then paste here."} value={pastedText} onChange={e=>setPastedText(e.target.value)} autoFocus/>
-        {pastedText.length>0&&<div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{pastedText.length} characters pasted</div>}
+        {pastedText.length>0&& <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{pastedText.length} characters pasted</div>}
       </>}
 
-      {tab==="photo"&&<>
+      {tab==="photo"&& <>
         <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12,lineHeight:1.5}}>Screenshot the PDF or email, save to Photos, then upload below.</p>
         <div style={{background:"var(--bg)",borderRadius:10,border:"2px dashed var(--border)",padding:"28px 20px",textAlign:"center",marginBottom:12}}>
           <div style={{fontSize:32,marginBottom:8}}>📄</div>
@@ -785,11 +785,11 @@ const WorkOrderScanner = ({onClose, onJobPrefill}) => {
         </div>
       </>}
 
-      {parsing&&<div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"var(--teal-l)",borderRadius:9,marginTop:12}}>
+      {parsing&& <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"var(--teal-l)",borderRadius:9,marginTop:12}}>
         <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
         <span style={{fontSize:13,color:"var(--teal2)",fontWeight:600}}>AI is reading the work order…</span>
       </div>}
-      {error&&<div style={{marginTop:12,padding:"10px 13px",background:"var(--red-bg)",borderRadius:9,fontSize:12.5,color:"var(--red)"}}>{error}</div>}
+      {error&& <div style={{marginTop:12,padding:"10px 13px",background:"var(--red-bg)",borderRadius:9,fontSize:12.5,color:"var(--red)"}}>{error}</div>}
     </Mod>
   );
 };
@@ -976,7 +976,7 @@ const CaptureModal = ({
       }>
 
       {/* IDLE — tap mic */}
-      {step==="idle"&&<div style={{textAlign:"center",padding:"20px 0 8px"}}>
+      {step==="idle"&& <div style={{textAlign:"center",padding:"20px 0 8px"}}>
         <button className="rb rb-idle" onClick={startRec}><Ic n="mic" s={32}/></button>
         <div style={{marginTop:16,fontSize:16,fontWeight:700,color:"var(--text)"}}>Tap to record</div>
         <div style={{marginTop:6,fontSize:13,color:"var(--text3)",lineHeight:1.6}}>
@@ -986,7 +986,7 @@ const CaptureModal = ({
       </div>}
 
       {/* RECORDING — live transcript shows as you speak */}
-      {step==="recording"&&<div style={{textAlign:"center",padding:"14px 0"}}>
+      {step==="recording"&& <div style={{textAlign:"center",padding:"14px 0"}}>
         <div className="wv mb-12">{[12,20,28,18,24,14,22].map((h,i)=><div key={i} className="wb" style={{height:h,animationDelay:`${i*.08}s`}}/>)}</div>
         <div style={{fontSize:40,fontWeight:700,letterSpacing:-2,color:"var(--red)",marginBottom:4,fontFamily:"monospace"}}>{fmt(timer)}</div>
         <div style={{fontSize:13,color:"var(--text3)",marginBottom:16}}>Listening…</div>
@@ -1002,13 +1002,13 @@ const CaptureModal = ({
       </div>}
 
       {/* CHOOSE — transcript shown, then action buttons */}
-      {step==="choose"&&<div>
+      {step==="choose"&& <div>
         {/* Transcript box — displays cleaned text, editable, copyable */}
         <div style={{background:"var(--bg)",borderRadius:10,padding:"12px 14px",marginBottom:4,position:"relative"}}>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5,marginBottom:5,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span>Transcript {text?"":"— nothing captured"}</span>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {text&&<CopyBtn text={cleanTranscript(text)}/>}
+              {text&& <CopyBtn text={cleanTranscript(text)}/>}
               <button onClick={()=>setEditing(e=>!e)} style={{fontSize:11.5,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500}}>
                 {editing?"Done":"Edit"}
               </button>
@@ -1051,16 +1051,16 @@ const CaptureModal = ({
       </div>}
 
       {/* CONFIRM — shows immediately, AI updates fields in background */}
-      {step==="confirm"&&<div>
+      {step==="confirm"&& <div>
         <div style={{background:"var(--bg)",borderRadius:9,padding:"10px 13px",marginBottom:12,fontSize:12.5,color:"var(--text2)",fontStyle:"italic",lineHeight:1.5,borderLeft:"3px solid var(--blue)"}}>
           "{text.slice(0,160)}{text.length>160?"…":""}"
         </div>
-        {confirming&&<div style={{fontSize:12,color:"var(--teal2)",marginBottom:10,display:"flex",alignItems:"center",gap:6,background:"var(--teal-l)",borderRadius:8,padding:"8px 12px"}}>
+        {confirming&& <div style={{fontSize:12,color:"var(--teal2)",marginBottom:10,display:"flex",alignItems:"center",gap:6,background:"var(--teal-l)",borderRadius:8,padding:"8px 12px"}}>
           <div className="wv" style={{display:"inline-flex",gap:2}}>{[6,9,12,9,6].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
           AI filling fields — you can edit now and it'll update as it finishes
         </div>}
 
-        {confirmType==="task"&&<>
+        {confirmType==="task"&& <>
           <div className="fg"><label className="fl">Task (edit if needed)</label><textarea className="fta" style={{minHeight:80,fontSize:13}} value={taskDraft.title} onChange={e=>setTaskDraft(p=>({...p,title:e.target.value}))} autoFocus/></div>
           <div className="fr">
             <div className="fg"><label className="fl">Priority</label><select className="fs" value={taskDraft.priority} onChange={e=>setTaskDraft(p=>({...p,priority:e.target.value}))}><option value="P1">P1 — Urgent</option><option value="P2">P2 — High</option><option value="P3">P3 — Low</option></select></div>
@@ -1073,8 +1073,8 @@ const CaptureModal = ({
           <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:60}} value={taskDraft.notes} onChange={e=>setTaskDraft(p=>({...p,notes:e.target.value}))}/></div>
         </>}
 
-        {confirmType==="job"&&<>
-          {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJobDraft(d=>({...d,...p}));setShowWOScanner(false);}}/>}
+        {confirmType==="job"&& <>
+          {showWOScanner&& <WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJobDraft(d=>({...d,...p}));setShowWOScanner(false);}}/>}
           <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:12,fontFamily:"'Inter',sans-serif"}}>
             <span style={{fontSize:20}}>📋</span>
             <div style={{textAlign:"left"}}>
@@ -1097,7 +1097,7 @@ const CaptureModal = ({
           </div>
         </>}
 
-        {confirmType==="reminder"&&<>
+        {confirmType==="reminder"&& <>
           <div className="fg"><label className="fl">Reminder *</label><input className="fi" value={reminderDraft.title} onChange={e=>setReminderDraft(p=>({...p,title:e.target.value}))} autoFocus/></div>
           <div className="fg"><label className="fl">Notes (optional)</label><textarea className="fta" style={{minHeight:60}} value={reminderDraft.notes} onChange={e=>setReminderDraft(p=>({...p,notes:e.target.value}))}/></div>
           <div className="fr">
@@ -1109,12 +1109,12 @@ const CaptureModal = ({
       </div>}
 
       {/* TYPING mode — same choose flow after text entered */}
-      {step==="typing"&&<div>
+      {step==="typing"&& <div>
         <div className="fg">
           <label className="fl">Type anything — job, task, reminder, thought</label>
           <textarea className="fta w-full" style={{minHeight:100,fontSize:14}} placeholder='"Call Marcus about cable order, also remind me to chase the Hargreaves quote Friday"' value={text} onChange={e=>setText(e.target.value)} autoFocus/>
         </div>
-        {text.trim()&&<>
+        {text.trim()&& <>
           <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.6,marginBottom:10}}>What is this?</div>
           <button onClick={saveThoughtDump} style={{
             display:"flex",alignItems:"center",gap:14,padding:"16px 18px",
@@ -1183,7 +1183,7 @@ const InboxPage = ({inbox,setInbox,tasks,setTasks,reminders,setReminders,jobs,on
           ))}
         </div>
       }
-      {promoteId&&item&&<Mod title="Convert to Task" onClose={()=>setPromoteId(null)}
+      {promoteId&&item&& <Mod title="Convert to Task" onClose={()=>setPromoteId(null)}
         footer={<><button className="btn btn-ghost" onClick={()=>setPromoteId(null)}>Cancel</button><button className="btn btn-blue" onClick={promoteTask}>Create Task</button></>}>
         <div style={{fontSize:13,color:"var(--text2)",fontStyle:"italic",background:"var(--bg)",borderRadius:9,padding:"10px 13px",marginBottom:14}}>"{item.text}"</div>
         <div className="fg"><label className="fl">Task Title *</label><input className="fi" value={pf.title} onChange={e=>setPf(p=>({...p,title:e.target.value}))}/></div>
@@ -1243,7 +1243,7 @@ const AddTaskModal = ({jobs=[], onVoice, onCreateJob, onSaveTask, onSaveReminder
   if(step==="job") return (
     <Mod title="New Job" onClose={onClose} lg
       footer={<><button className="btn btn-ghost" onClick={()=>setStep("choose")}>← Back</button><button className="btn btn-teal" onClick={saveJob}>Create Job</button></>}>
-      {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJf(f=>({...f,...p}));setShowWOScanner(false);}}/>}
+      {showWOScanner&& <WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJf(f=>({...f,...p}));setShowWOScanner(false);}}/>}
       <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:12,fontFamily:"'Inter',sans-serif"}}>
         <span style={{fontSize:20}}>📋</span>
         <div style={{textAlign:"left"}}>
@@ -1416,7 +1416,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               <span style={{fontSize:12,background:"var(--green)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{openTaskCount} tasks</span>
               <span style={{fontSize:12,background:"var(--amber)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{openReminderCount} reminders</span>
-              {pendingCount>0&&<span style={{fontSize:12,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{pendingCount} pending</span>}
+              {pendingCount>0&& <span style={{fontSize:12,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{pendingCount} pending</span>}
             </div>
             <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic",lineHeight:1.5}}>{smartQuote}</div>
           </div>
@@ -1424,13 +1424,13 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
           <div style={{marginBottom:12,border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
             {/* Header — part of the container */}
             <div onClick={()=>setTasksOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:tasksOpen?"1px solid var(--border)":"none",background:"#fff"}}>
-              <span className="st">Open Tasks {openTasks.length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--green)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{openTasks.length}</span>}</span>
+              <span className="st">Open Tasks {openTasks.length>0&& <span style={{fontSize:11,fontWeight:700,background:"var(--green)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{openTasks.length}</span>}</span>
               <div style={{display:"flex",alignItems:"center",gap:16}}>
                 <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{tasksOpen?"↑":"↓"}</span>
                 <button className="va" onClick={e=>{e.stopPropagation();onNav("tasks");}}>All <Ic n="chevR" s={13}/></button>
               </div>
             </div>
-            {tasksOpen&&<div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
+            {tasksOpen&& <div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
             {openTasks.length===0
               ?<><div className="card"><div className="em"><Ic n="check" s={26} col="var(--green)"/><p style={{marginTop:8,fontSize:13,color:"var(--green)"}}>Nothing due. You're on top of it.</p></div></div></>
               :(() => {
@@ -1455,7 +1455,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px"}}>
                           <div>
                             <div style={{fontWeight:700,fontSize:13,color:"var(--navy)"}}>{job?.address||job?.name||"Tasks"}</div>
-                            <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job?.client&&<span>{job.client} · </span>}{gTasks.length} tasks remaining</div>
+                            <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job?.client&& <span>{job.client} · </span>}{gTasks.length} tasks remaining</div>
                           </div>
                           <button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Expand ↓</button>
                         </div>
@@ -1464,12 +1464,12 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                   }
                   return (
                     <div key={key} className="card" style={{padding:0,marginBottom:8}}>
-                      {job&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px 6px",borderBottom:"1px solid var(--border)"}}>
+                      {job&& <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px 6px",borderBottom:"1px solid var(--border)"}}>
                         <div>
                           <div style={{fontSize:13,fontWeight:700,color:"var(--navy)"}}>{job.address||job.name}</div>
-                          {job.client&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job.client}</div>}
+                          {job.client&& <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job.client}</div>}
                         </div>
-                        {isGroup&&<button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Compress ↑</button>}
+                        {isGroup&& <button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Compress ↑</button>}
                       </div>}
                       {gTasks.map(t=>(
                         <div key={t.id} className="task-row" style={{cursor:"pointer"}} onClick={()=>setSelTask(t)}>
@@ -1478,7 +1478,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                             <div className="t-title">{t.title}</div>
                             <div className="t-meta">
                               <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
-                              {t.dueDate&&<span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":fmtDate(t.dueDate)}</span>}
+                              {t.dueDate&& <span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":fmtDate(t.dueDate)}</span>}
                             </div>
                           </div>
                           <div className="t-right"><PBadge p={t.priority}/></div>
@@ -1489,14 +1489,14 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                 });
               })()
             }
-            {done12>0&&<div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px",display:"flex",alignItems:"center",gap:6}}><Ic n="check" s={12} col="var(--green)"/>{done12} completed</div>}
+            {done12>0&& <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px",display:"flex",alignItems:"center",gap:6}}><Ic n="check" s={12} col="var(--green)"/>{done12} completed</div>}
             </div>}
           </div>
         </div>
 
         {/* RIGHT */}
         <div>
-          {pendingIntake.length>0&&<div className="card mb-12">
+          {pendingIntake.length>0&& <div className="card mb-12">
             <div style={{padding:"11px 13px 0"}}><div className="sh"><span className="st" style={{color:"var(--amber)"}}>⏳ Pending ({pendingIntake.length})</span><button className="va" onClick={()=>onNav("jobs")}>All <Ic n="chevR" s={12}/></button></div></div>
             <div style={{padding:"0 13px 10px"}}>{pendingIntake.map(p=>(
               <div key={p.id} onClick={()=>setReviewIntakeDash(p)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:"1px solid var(--border)",cursor:"pointer"}}>
@@ -1508,7 +1508,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
           </div>}
 
           {/* Inline review modal for pending intake from dashboard */}
-          {reviewIntakeDash&&<Mod title="Client Request" onClose={()=>setReviewIntakeDash(null)} lg
+          {reviewIntakeDash&& <Mod title="Client Request" onClose={()=>setReviewIntakeDash(null)} lg
             footer={<>
               <button className="btn btn-ghost" onClick={()=>setReviewIntakeDash(null)}>← Back</button>
               <button className="btn btn-ghost" style={{color:"var(--red)"}} onClick={()=>{setPendingIntake(p=>p.filter(x=>x.id!==reviewIntakeDash.id));setReviewIntakeDash(null);}}>Dismiss</button>
@@ -1518,7 +1518,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
               <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>{reviewIntakeDash.name}</div>
               <div style={{fontSize:13,color:"var(--text3)"}}>{reviewIntakeDash.address}</div>
             </div>
-            {[["Phone",reviewIntakeDash.phone],["Email",reviewIntakeDash.email],["Submitted",reviewIntakeDash.submitted]].map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+            {[["Phone",reviewIntakeDash.phone],["Email",reviewIntakeDash.email],["Submitted",reviewIntakeDash.submitted]].map(([l,v])=>v&& <div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
             <div style={{marginTop:12}}>
               <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>Scope / Notes</div>
               <div style={{fontSize:13.5,color:"var(--text)",lineHeight:1.7,background:"var(--bg)",borderRadius:9,padding:"12px 14px"}}>{reviewIntakeDash.scope}</div>
@@ -1527,13 +1527,13 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
 
           <div className="mb-12" style={{border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
             <div onClick={()=>setRemindersOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:remindersOpen?"1px solid var(--border)":"none",background:"#fff"}}>
-              <span className="st">Reminders {reminders.filter(r=>!r.done).length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--amber)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{reminders.filter(r=>!r.done).length}</span>}</span>
+              <span className="st">Reminders {reminders.filter(r=>!r.done).length>0&& <span style={{fontSize:11,fontWeight:700,background:"var(--amber)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{reminders.filter(r=>!r.done).length}</span>}</span>
               <div style={{display:"flex",alignItems:"center",gap:16}}>
                 <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{remindersOpen?"↑":"↓"}</span>
                 <button className="va" onClick={e=>{e.stopPropagation();onNav("reminders");}}>All <Ic n="chevR" s={12}/></button>
               </div>
             </div>
-            {remindersOpen&&<div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
+            {remindersOpen&& <div style={{background:"var(--bg)",padding:"10px 10px 2px 10px"}}>
               {reminders.filter(r=>!r.done).length===0
                 ?<div style={{padding:"8px 4px 10px",fontSize:12.5,color:"var(--text3)"}}>No reminders</div>
                 :reminders.filter(r=>!r.done).slice(0,4).map(r=>{
@@ -1545,8 +1545,8 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                         <div style={{flex:1}}>
                           <div className="rem-text" style={{fontSize:12.5}}>{(r.title||r.text).slice(0,65)}{(r.title||r.text).length>65?"…":""}</div>
                           <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
-                            {rJob&&<span className="tag"><Ic n="link" s={10}/>{rJob.address||rJob.name}</span>}
-                            {r.dueDate&&<div className="rem-date" style={{fontSize:11,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":fmtDate(r.dueDate)}</div>}
+                            {rJob&& <span className="tag"><Ic n="link" s={10}/>{rJob.address||rJob.name}</span>}
+                            {r.dueDate&& <div className="rem-date" style={{fontSize:11,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":fmtDate(r.dueDate)}</div>}
                           </div>
                         </div>
                         <CopyBtn text={r.title||r.text} style={{flexShrink:0}}/>
@@ -1558,7 +1558,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             </div>}
           </div>
 
-          {selReminder&&<Mod title="Reminder" onClose={()=>setSelReminder(null)}
+          {selReminder&& <Mod title="Reminder" onClose={()=>setSelReminder(null)}
             footer={<>
               <button className="btn btn-ghost" onClick={()=>setSelReminder(null)}>← Back</button>
               <button className="btn btn-ghost" onClick={()=>{
@@ -1586,7 +1586,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
           </Mod>}
 
           {/* Capture inbox — shown only if items exist, quiet placement */}
-          {inbox&&inbox.length>0&&<div className="card" style={{padding:0}}>
+          {inbox&&inbox.length>0&& <div className="card" style={{padding:0}}>
             <div style={{padding:"10px 13px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <span style={{fontWeight:600,fontSize:12,color:"var(--text2)"}}>📥 Unsorted notes ({inbox.length})</span>
               <button className="va" onClick={()=>onNav("inbox")} style={{fontSize:11.5}}>Sort <Ic n="chevR" s={12}/></button>
@@ -1599,7 +1599,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
           </div>}
         </div>
       </div>
-      {selTask&&<TaskDetailModal task={selTask} jobs={jobs} onClose={()=>setSelTask(null)} onSave={saveTask} onComplete={complete} onReopen={reopen}
+      {selTask&& <TaskDetailModal task={selTask} jobs={jobs} onClose={()=>setSelTask(null)} onSave={saveTask} onComplete={complete} onReopen={reopen}
         onOpenJob={jobId=>{setSelTask(null);onNav("jobs",jobId);}}
       />}
     </div>
@@ -1638,12 +1638,12 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
               }
             </>
       }>
-      {!editing&&<>
+      {!editing&& <>
         {/* Title + copy */}
         <div style={{marginBottom:14,display:"flex",alignItems:"flex-start",gap:10}}>
           <div style={{flex:1}}>
             <div style={{fontSize:18,fontWeight:700,color:task.done?"var(--text3)":"var(--text)",textDecoration:task.done?"line-through":"none",lineHeight:1.4}}>{f.title}</div>
-            {task.done&&<div style={{fontSize:12,color:"var(--green)",marginTop:4,fontWeight:600}}>✓ Completed</div>}
+            {task.done&& <div style={{fontSize:12,color:"var(--green)",marginTop:4,fontWeight:600}}>✓ Completed</div>}
           </div>
           <CopyBtn text={copyText}/>
         </div>
@@ -1651,12 +1651,12 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14}}>
           <span style={{background:priorityColor[f.priority]+"18",color:priorityColor[f.priority],borderRadius:7,padding:"4px 10px",fontSize:12,fontWeight:700}}>{f.priority} — {priorityLabel[f.priority]}</span>
           <span style={{background:"var(--bg)",borderRadius:7,padding:"4px 10px",fontSize:12,color:"var(--text2)"}}>👤 {f.assignedTo||"Me"}</span>
-          {f.dueDate&&<span style={{background:"var(--bg)",borderRadius:7,padding:"4px 10px",fontSize:12,color:!task.done&&f.dueDate<TODAY?"var(--red)":"var(--text2)",fontWeight:f.dueDate<=TODAY?600:400}}>
+          {f.dueDate&& <span style={{background:"var(--bg)",borderRadius:7,padding:"4px 10px",fontSize:12,color:!task.done&&f.dueDate<TODAY?"var(--red)":"var(--text2)",fontWeight:f.dueDate<=TODAY?600:400}}>
             <Ic n="clock" s={11}/> {f.dueDate===TODAY?"Due Today":f.dueDate<TODAY&&!task.done?"Overdue":fmtDate(f.dueDate)}
           </span>}
         </div>
         {/* Job link — tappable to open job */}
-        {job&&<div style={{background:"var(--blue-l)",borderRadius:9,padding:"11px 13px",marginBottom:12}}>
+        {job&& <div style={{background:"var(--blue-l)",borderRadius:9,padding:"11px 13px",marginBottom:12}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--blue)",textTransform:"uppercase",letterSpacing:.4,marginBottom:5}}>Linked Job</div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
             <div>
@@ -1668,7 +1668,7 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
               padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,fontFamily:"'Inter',sans-serif"
             }}>Open Job →</button>
           </div>
-          {job.email&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--blue-l)"}}>
+          {job.email&& <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--blue-l)"}}>
             <a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}&body=${mb(`Hi ${job.client},`,`Re: ${job.address||job.name}`,f.title,"",`Regards,\n${ACCOUNT.name}`)}`}
               style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:12,color:"var(--blue)",fontWeight:600,textDecoration:"none"}}>
               ✉ Email {job.client} →
@@ -1676,17 +1676,17 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
           </div>}
         </div>}
         {/* Notes + copy */}
-        {f.notes&&<div style={{background:"var(--bg)",borderRadius:9,padding:"12px 13px"}}>
+        {f.notes&& <div style={{background:"var(--bg)",borderRadius:9,padding:"12px 13px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
             <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4}}>Notes</div>
             <CopyBtn text={f.notes}/>
           </div>
           <div style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{f.notes}</div>
         </div>}
-        {!f.notes&&!job&&<div style={{fontSize:13,color:"var(--text3)"}}>No notes or job linked.</div>}
+        {!f.notes&&!job&& <div style={{fontSize:13,color:"var(--text3)"}}>No notes or job linked.</div>}
       </>}
 
-      {editing&&<>
+      {editing&& <>
         <div className="fg"><label className="fl">Task Title *</label><input className="fi" value={f.title} onChange={e=>setF(p=>({...p,title:e.target.value}))} autoFocus/></div>
         <div className="fr">
           <div className="fg"><label className="fl">Priority</label><select className="fs" value={f.priority} onChange={e=>setF(p=>({...p,priority:e.target.value}))}><option value="P1">P1 — Urgent</option><option value="P2">P2 — High</option><option value="P3">P3 — Low</option></select></div>
@@ -1739,9 +1739,9 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
                 <div className="t-body">
                   <div className={`t-title${t.done?" dn":""}`}>{t.title}</div>
                   <div className="t-meta">
-                    {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
+                    {job&& <span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
                     <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
-                    {t.dueDate&&<span style={{fontSize:11,color:!t.done&&t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY&&!t.done?"Overdue":fmtDate(t.dueDate)}</span>}
+                    {t.dueDate&& <span style={{fontSize:11,color:!t.done&&t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY&&!t.done?"Overdue":fmtDate(t.dueDate)}</span>}
                   </div>
                 </div>
                 <div className="t-right"><PBadge p={t.priority}/></div>
@@ -1751,11 +1751,11 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
         }
       </div>
 
-      {selTask&&<TaskDetailModal task={selTask} jobs={jobs} onClose={()=>setSelTask(null)} onSave={saveTask} onComplete={complete} onReopen={reopen}
+      {selTask&& <TaskDetailModal task={selTask} jobs={jobs} onClose={()=>setSelTask(null)} onSave={saveTask} onComplete={complete} onReopen={reopen}
         onOpenJob={jobId=>{setSelTask(null);onNav&&onNav("jobs",jobId);}}
       />}
 
-      {showNew&&<Mod title="New Task" onClose={()=>setShowNew(false)}
+      {showNew&& <Mod title="New Task" onClose={()=>setShowNew(false)}
         footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>← Cancel</button><button className="btn btn-blue" onClick={add}>Add Task</button></>}>
         <div className="fg"><label className="fl">Task Title *</label><input className="fi" placeholder="What needs doing?" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}/></div>
         <div className="fr">
@@ -1810,11 +1810,11 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         <div className="rem-dot" style={{background:dotColor,marginTop:5}}/>
         <div style={{flex:1,cursor:"pointer"}} onClick={()=>setEditReminder({...r})}>
           <div className="rem-text">{r.title||r.text}</div>
-          {r.notes&&<div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{r.notes}</div>}
+          {r.notes&& <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{r.notes}</div>}
           <div className="rem-date flex gap-8" style={{marginTop:4}}>
-            {r.dueDate&&<span style={{color:urgency==="overdue"?"var(--red)":urgency==="today"?"var(--amber)":"var(--text3)",display:"flex",alignItems:"center",gap:3}}><Ic n="clock" s={10}/>{urgency==="overdue"?"Overdue":urgency==="today"?"Today":fmtDate(r.dueDate)}{r.dueTime?" at "+r.dueTime:""}</span>}
-            {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
-            {!r.dueDate&&<span style={{color:"var(--text3)"}}>No due date</span>}
+            {r.dueDate&& <span style={{color:urgency==="overdue"?"var(--red)":urgency==="today"?"var(--amber)":"var(--text3)",display:"flex",alignItems:"center",gap:3}}><Ic n="clock" s={10}/>{urgency==="overdue"?"Overdue":urgency==="today"?"Today":fmtDate(r.dueDate)}{r.dueTime?" at "+r.dueTime:""}</span>}
+            {job&& <span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
+            {!r.dueDate&& <span style={{color:"var(--text3)"}}>No due date</span>}
           </div>
         </div>
         <div className="flex gap-8" style={{alignItems:"flex-start"}}>
@@ -1843,12 +1843,12 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         <span><strong>Reminders</strong> are time-based nudges — work or personal. They can exist without a job, and can be promoted to a proper Task any time. Use the <strong>mic button</strong> to dump a thought without structure.</span>
       </div>
 
-      {overdue.length>0&&<div className="card mb-16" style={{padding:0}}>
+      {overdue.length>0&& <div className="card mb-16" style={{padding:0}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",background:"var(--red-bg)"}}><span style={{fontWeight:700,fontSize:12,textTransform:"uppercase",letterSpacing:.5,color:"var(--red)"}}>⚠ Overdue ({overdue.length})</span></div>
         {overdue.map(r=><ReminderRow key={r.id} r={r} urgency="overdue"/>)}
       </div>}
 
-      {today.length>0&&<div className="card mb-16" style={{padding:0}}>
+      {today.length>0&& <div className="card mb-16" style={{padding:0}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",background:"var(--amber-bg)"}}><span style={{fontWeight:700,fontSize:12,textTransform:"uppercase",letterSpacing:.5,color:"var(--amber)"}}>⏰ Today ({today.length})</span></div>
         {today.map(r=><ReminderRow key={r.id} r={r} urgency="today"/>)}
       </div>}
@@ -1859,17 +1859,17 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         :upcoming.map(r=><ReminderRow key={r.id} r={r} urgency="upcoming"/>)}
       </div>
 
-      {done.length>0&&<div className="card" style={{padding:0,opacity:.55}}>
+      {done.length>0&& <div className="card" style={{padding:0,opacity:.55}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)"}}><span style={{fontWeight:700,fontSize:12,textTransform:"uppercase",letterSpacing:.5,color:"var(--text3)"}}>Done ({done.length})</span></div>
         {done.map(r=>(
           <div key={r.id} className="rem-row">
             <div className="rem-dot" style={{background:"var(--border)"}}/>
-            <div style={{flex:1}}><div className="rem-text done">{r.title||r.text}</div>{r.promoted&&<div style={{fontSize:11,color:"var(--teal2)",marginTop:2}}>→ Promoted to task</div>}</div>
+            <div style={{flex:1}}><div className="rem-text done">{r.title||r.text}</div>{r.promoted&& <div style={{fontSize:11,color:"var(--teal2)",marginTop:2}}>→ Promoted to task</div>}</div>
           </div>
         ))}
       </div>}
 
-      {showNew&&<Mod title="New Reminder" onClose={()=>setShowNew(false)}
+      {showNew&& <Mod title="New Reminder" onClose={()=>setShowNew(false)}
         footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add Reminder</button></>}>
         <div className="fg"><label className="fl">Reminder *</label><input className="fi" placeholder="What do you need to remember?" value={form.title} onChange={e=>setForm(p=>({...p,title:e.target.value}))} autoFocus/></div>
         <div className="fg"><label className="fl">Notes (optional)</label><textarea className="fta" style={{minHeight:60}} placeholder="Any extra detail…" value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div>
@@ -1880,12 +1880,12 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         <JobSearchInput jobs={jobs} value={form.linkedJobId||""} onChange={(id)=>setForm(p=>({...p,linkedJobId:id}))} label="Link to Job (optional)"/>
       </Mod>}
 
-      {promoteId&&<Mod title="Move to Tasks" onClose={()=>setPromoteId(null)}
+      {promoteId&& <Mod title="Move to Tasks" onClose={()=>setPromoteId(null)}
         footer={<><button className="btn btn-ghost" onClick={()=>setPromoteId(null)}>← Back</button><button className="btn btn-teal" onClick={doPromote}>✓ Create Task</button></>}>
         {/* Context note */}
         <div style={{background:"var(--teal-l)",borderRadius:9,padding:"10px 13px",marginBottom:14,fontSize:12.5,color:"var(--teal2)",lineHeight:1.5}}>
           This reminder will move to Tasks and be removed from Reminders.
-          {pf.jobId&&<span> It will be linked to the job below.</span>}
+          {pf.jobId&& <span> It will be linked to the job below.</span>}
         </div>
         <div className="fg"><label className="fl">Task Title *</label><input className="fi" value={pf.title} onChange={e=>setPf(p=>({...p,title:e.target.value}))} autoFocus/></div>
         <div className="fr">
@@ -1898,7 +1898,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
         </div>
       </Mod>}
 
-      {editReminder&&<Mod title="Reminder" onClose={()=>setEditReminder(null)}
+      {editReminder&& <Mod title="Reminder" onClose={()=>setEditReminder(null)}
         footer={<>
           <button className="btn btn-ghost" onClick={()=>setEditReminder(null)}>← Back</button>
           <button className="btn btn-blue" onClick={()=>{setReminders(p=>p.map(r=>r.id===editReminder.id?{...r,...editReminder,text:editReminder.title}:r));setEditReminder(null);}}>Save</button>
@@ -1944,10 +1944,10 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
           <button className="btn btn-teal" onClick={onNew}><Ic n="plus" s={15}/> Create Job</button>
         </div>
       </div>
-      {showScanner&&<WorkOrderScanner onClose={()=>setShowScanner(false)} onJobPrefill={(prefill)=>{setShowScanner(false);onScanWorkOrder(prefill);}}/>}
+      {showScanner&& <WorkOrderScanner onClose={()=>setShowScanner(false)} onJobPrefill={(prefill)=>{setShowScanner(false);onScanWorkOrder(prefill);}}/>}
 
       {/* Pending intake jobs — shown at top when present */}
-      {pendingIntake&&pendingIntake.length>0&&<div className="card mb-16" style={{padding:0}}>
+      {pendingIntake&&pendingIntake.length>0&& <div className="card mb-16" style={{padding:0}}>
         <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border)",background:"var(--amber-bg)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{fontWeight:700,fontSize:12,textTransform:"uppercase",letterSpacing:.5,color:"#92400E"}}>⏳ Pending Client Requests ({pendingIntake.length})</span>
         </div>
@@ -1977,9 +1977,9 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
             <div style={{width:5,alignSelf:"stretch",borderRadius:"4px 0 0 4px",background:statusColor[j.status]||"var(--border)",flexShrink:0,margin:"-12px 0 -12px -16px"}}/>
             <div className="pc-av" style={{width:40,height:40,fontSize:13,marginLeft:4}}>{ini(j.client)}</div>
             <div className="li-main">
-              <div className="li-title">{j.address||j.name}{j.is_future_prospect&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#7C3AED",marginLeft:6,verticalAlign:"middle"}}/>}</div>
+              <div className="li-title">{j.address||j.name}{j.is_future_prospect&& <span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#7C3AED",marginLeft:6,verticalAlign:"middle"}}/>}</div>
               <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client}</div>
-              <div style={{marginTop:6}}><JobTags job={j}/>{j.status==="completed"&&(!j.certUploaded||!j.invoiceUploaded)&&<span style={{marginLeft:6,fontSize:11,color:"var(--amber)"}}>⚠️</span>}</div>
+              <div style={{marginTop:6}}><JobTags job={j}/>{j.status==="completed"&&(!j.certUploaded||!j.invoiceUploaded)&& <span style={{marginLeft:6,fontSize:11,color:"var(--amber)"}}>⚠️</span>}</div>
             </div>
             <div className="li-meta"><span style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>${(j.value||0).toLocaleString()}</span><Ic n="chevR" s={15} col="var(--text3)"/></div>
           </div>
@@ -1987,7 +1987,7 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
       </div>
 
       {/* Review intake modal — full details, confirm or dismiss */}
-      {reviewIntake&&<Mod title="Client Request" onClose={()=>setReviewIntake(null)} lg
+      {reviewIntake&& <Mod title="Client Request" onClose={()=>setReviewIntake(null)} lg
         footer={<>
           <button className="btn btn-ghost" onClick={()=>setReviewIntake(null)}>← Back</button>
           <button className="btn btn-ghost" style={{color:"var(--red)"}} onClick={()=>{onAcceptIntake(reviewIntake,"dismiss");setReviewIntake(null);}}>Dismiss</button>
@@ -1997,7 +1997,7 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
           <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>{reviewIntake.name}</div>
           <div style={{fontSize:13,color:"var(--text3)"}}>{reviewIntake.address}</div>
         </div>
-        {[["Phone",reviewIntake.phone],["Email",reviewIntake.email],["Submitted",reviewIntake.submitted]].map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+        {[["Phone",reviewIntake.phone],["Email",reviewIntake.email],["Submitted",reviewIntake.submitted]].map(([l,v])=>v&& <div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
         <div style={{marginTop:12}}>
           <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4,marginBottom:6}}>Scope / Notes</div>
           <div style={{fontSize:13.5,color:"var(--text)",lineHeight:1.7,background:"var(--bg)",borderRadius:9,padding:"12px 14px"}}>{reviewIntake.scope}</div>
@@ -2254,7 +2254,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
         <div className="flex gap-8 ai-c">
           <JobTags job={job}/>
           <button style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,border:"1px solid var(--border)",background:"#fff",fontSize:12,fontWeight:600,color:"var(--text2)",cursor:"pointer",flexShrink:0}} onClick={()=>{setDupeForm({address:"",client:job.client||"",builder:job.builder||"",phone:job.phone||"",email:job.email||"",scope:job.scope||"",value:job.value||"",date:""});setShowDupe(true);}}>⧉ Duplicate</button>
-          {job.phone&&<a href={`tel:${job.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,background:"var(--teal)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",flexShrink:0}}>📞 Call</a>}
+          {job.phone&& <a href={`tel:${job.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,background:"var(--teal)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",flexShrink:0}}>📞 Call</a>}
         </div>
       </div>
 
@@ -2273,7 +2273,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
             <div className="section-box-head">
               <span className="st">Job Details</span>
               <div className="flex gap-8">
-                {job.email&&<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}&body=${mb(`Hi ${job.client},`,`Re: ${job.address||job.name}`,`Regards,\n${ACCOUNT.name}`)}`}
+                {job.email&& <a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}&body=${mb(`Hi ${job.client},`,`Re: ${job.address||job.name}`,`Regards,\n${ACCOUNT.name}`)}`}
                   style={{display:"inline-flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:7,background:"var(--blue-l)",color:"var(--blue)",fontSize:12,fontWeight:700,textDecoration:"none",border:"1.5px solid var(--blue)30"}}>
                   ✉ Email
                 </a>}
@@ -2290,7 +2290,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
                   <button className="btn btn-blue btn-sm w-full" onClick={saveJobEdit}>Save Changes</button>
                 </div>
               : <div style={{padding:"4px 16px 12px"}}>
-                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date?fmtDate(job.date):null],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date?fmtDate(job.date):null],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&& <div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
                 </div>
             }
           </div>
@@ -2304,7 +2304,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
             <div style={{padding:"12px 16px",fontSize:13,color:"var(--text2)",lineHeight:1.65,borderBottom:job.scopeItems.length?"1px solid var(--border)":"none"}}>{job.scope}</div>
             {job.scopeItems.map(si=>(
               <div key={si.id} className="scope-item">
-                <div className={`scope-check${si.done?" on":""}`} onClick={()=>toggleScope(si.id)}>{si.done&&<Ic n="check" s={10} col="#fff"/>}</div>
+                <div className={`scope-check${si.done?" on":""}`} onClick={()=>toggleScope(si.id)}>{si.done&& <Ic n="check" s={10} col="#fff"/>}</div>
                 <div style={{fontSize:13.5,color:si.done?"var(--text3)":"var(--text)",textDecoration:si.done?"line-through":"none",flex:1}}>{si.text}</div>
               </div>
             ))}
@@ -2323,7 +2323,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               </div>
             </div>
 
-            {recNote&&<div style={{padding:"10px 16px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+            {recNote&& <div style={{padding:"10px 16px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
               <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
               <span style={{fontSize:12,color:"var(--red)",flex:1}}>{recText||"Listening…"}</span>
             </div>}
@@ -2336,14 +2336,14 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <span style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4}}>{fmtDate(n.date)} · {n.time}</span>
-                      {n.via==="voice"&&<span style={{fontSize:10,color:"var(--blue)",fontWeight:600,background:"var(--blue-l)",borderRadius:4,padding:"1px 5px"}}>🎙 voice</span>}
+                      {n.via==="voice"&& <span style={{fontSize:10,color:"var(--blue)",fontWeight:600,background:"var(--blue-l)",borderRadius:4,padding:"1px 5px"}}>🎙 voice</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>e.stopPropagation()}>
-                      {n.text&&<CopyBtn text={n.text}/>}
+                      {n.text&& <CopyBtn text={n.text}/>}
                       <span style={{fontSize:11,color:"var(--text3)"}}>✎</span>
                     </div>
                   </div>
-                  {n.text&&<p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,margin:"0 0 8px 0"}}>{n.text}</p>}
+                  {n.text&& <p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,margin:"0 0 8px 0"}}>{n.text}</p>}
                   {n.photos&&n.photos.length>0&&(
                     <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}} onClick={e=>e.stopPropagation()}>
                       {n.photos.map(ph=>(
@@ -2362,10 +2362,10 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           </div>
 
           {/* Note compose modal */}
-          {showNote&&<Mod title="Add Note" onClose={()=>setShowNote(false)}
+          {showNote && <Mod title="Add Note" onClose={()=>setShowNote(false)}
             footer={<><button className="btn btn-ghost" onClick={()=>setShowNote(false)}>Cancel</button><button className="btn btn-blue" onClick={saveNote}>Save</button></>}>
             <textarea className="fta w-full" style={{minHeight:100}} placeholder="What happened on site…" value={noteText} onChange={e=>setNoteText(e.target.value)} autoFocus/>
-            {noteDraftPhotos.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
+            {noteDraftPhotos.length>0&& <div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
               {noteDraftPhotos.map(ph=>(
                 <div key={ph.id} style={{position:"relative"}}>
                   <img src={ph.src} alt={ph.name} style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
@@ -2378,10 +2378,10 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           </Mod>}
 
           {/* Edit diary entry modal */}
-          {editEntry&&<Mod title="Edit Note" onClose={()=>setEditEntry(null)}
+          {editEntry && <Mod title="Edit Note" onClose={()=>setEditEntry(null)}
             footer={<><button className="btn btn-ghost" onClick={()=>setEditEntry(null)}>← Back</button><button className="btn btn-blue" onClick={saveEditEntry}>Save</button></>}>
             <textarea className="fta w-full" style={{minHeight:100}} value={editEntryText} onChange={e=>setEditEntryText(e.target.value)}/>
-            {editEntryPhotos.length>0&&<div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
+            {editEntryPhotos.length>0&& <div style={{display:"flex",gap:8,flexWrap:"wrap",margin:"10px 0"}}>
               {editEntryPhotos.map(ph=>(
                 <div key={ph.id} style={{position:"relative"}}>
                   <img src={ph.src} alt={ph.name} style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
@@ -2409,17 +2409,17 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
                 <div className={`wf-check${job.checkboxes[key]?" on":""}`}
                   onClick={()=>toggleWF(key)}
                   style={{}}>
-                  {job.checkboxes[key]&&<Ic n="check" s={12} col="#fff"/>}
+                  {job.checkboxes[key]&& <Ic n="check" s={12} col="#fff"/>}
                 </div>
                 <div style={{flex:1}}>
                   <div className="wf-label" style={{display:"flex",alignItems:"center",gap:6}}>
                     {label}
-                    {upload==="cert"&&job.checkboxes.completed&&!job.certUploaded&&<span title="No certificate uploaded">⚠️</span>}
-                    {upload==="invoice"&&job.checkboxes.completed&&!job.invoiceUploaded&&<span title="No invoice uploaded">⚠️</span>}
+                    {upload==="cert"&&job.checkboxes.completed&&!job.certUploaded&& <span title="No certificate uploaded">⚠️</span>}
+                    {upload==="invoice"&&job.checkboxes.completed&&!job.invoiceUploaded&& <span title="No invoice uploaded">⚠️</span>}
                   </div>
                   <div className="wf-hint">{hint}</div>
                 </div>
-                {upload&&!job.checkboxes[key]&&<>
+                {upload&&!job.checkboxes[key]&& <>
                   <input ref={upload==="cert"?certFileRef:invFileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{display:"none"}} onChange={e=>handleDocUpload(upload,e)}/>
                   <button className="btn btn-ghost btn-xs" onClick={()=>(upload==="cert"?certFileRef:invFileRef).current?.click()}><Ic n="upload" s={12}/> Upload</button>
                 </>}
@@ -2437,15 +2437,15 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               </div>
             ))}
             {/* Full view modal for cert/invoice */}
-            {viewDoc&&<Mod title={viewDoc.type==="cert"?"Certificate":viewDoc.type==="invoice"?"Invoice":viewDoc.type==="plan"?"Plan / Order":"Photo"} onClose={()=>setViewDoc(null)}
+            {viewDoc && <Mod title={viewDoc.type==="cert"?"Certificate":viewDoc.type==="invoice"?"Invoice":viewDoc.type==="plan"?"Plan / Order":"Photo"} onClose={()=>setViewDoc(null)}
               footer={<>
                 <button className="btn btn-ghost" onClick={()=>setViewDoc(null)}>← Back</button>
                 <button className="btn btn-ghost" onClick={()=>shareFile(viewDoc.src,viewDoc.name||"file")}><Ic n="download" s={13}/> Save</button>
-                {viewDoc.type!=="photo"&&<a href={`mailto:?subject=${encodeURIComponent((viewDoc.type==="cert"?"Certificate":"Invoice")+" — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the ${viewDoc.type==="cert"?"certificate":"invoice"} for ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
+                {viewDoc.type!=="photo"&& <a href={`mailto:?subject=${encodeURIComponent((viewDoc.type==="cert"?"Certificate":"Invoice")+" — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the ${viewDoc.type==="cert"?"certificate":"invoice"} for ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
                   style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 17px",borderRadius:9,background:"var(--blue)",color:"#fff",fontSize:13.5,fontWeight:600,textDecoration:"none"}}>
                   <Ic n="mail" s={13} col="#fff"/> Email
                 </a>}
-                {viewDoc.type==="photo"&&<a href={`mailto:?subject=${encodeURIComponent("Photo — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the photo from ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
+                {viewDoc.type==="photo"&& <a href={`mailto:?subject=${encodeURIComponent("Photo — "+(job.address||job.name))}&body=${mb(`Hi ${job.client||""},`,`Please find the photo from ${job.address||job.name} attached.`,"",`Regards,\n${ACCOUNT.name}`)}`}
                   style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 17px",borderRadius:9,background:"var(--blue)",color:"#fff",fontSize:13.5,fontWeight:600,textDecoration:"none"}}>
                   <Ic n="mail" s={13} col="#fff"/> Email
                 </a>}
@@ -2465,7 +2465,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               </div>
             </Mod>}
             {/* Confirm ticking cert/invoice without upload */}
-            {showDocConfirm&&<Mod title={`Mark ${showDocConfirm==="cert"?"Certificate":"Invoice"} as Done?`} onClose={()=>setShowDocConfirm(null)}
+            {showDocConfirm&& <Mod title={`Mark ${showDocConfirm==="cert"?"Certificate":"Invoice"} as Done?`} onClose={()=>setShowDocConfirm(null)}
               footer={<><button className="btn btn-ghost" onClick={()=>setShowDocConfirm(null)}>Cancel</button><button className="btn btn-teal" onClick={confirmDocTick}>✓ Mark Done</button></>}>
               <div style={{padding:"4px 0"}}>
                 <div style={{background:"var(--amber-bg)",borderRadius:9,padding:"10px 13px",fontSize:12.5,color:"#92400E",display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
@@ -2478,10 +2478,10 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               </div>
             </Mod>}
             {/* Confirm complete modal */}
-            {showCompleteConfirm&&<Mod title="Mark Job Complete?" onClose={()=>setShowCompleteConfirm(false)}
+            {showCompleteConfirm&& <Mod title="Mark Job Complete?" onClose={()=>setShowCompleteConfirm(false)}
               footer={<><button className="btn btn-ghost" onClick={()=>setShowCompleteConfirm(false)}>Cancel</button><button className="btn btn-teal" onClick={confirmComplete}>✓ Yes, Complete</button></>}>
               <p style={{fontSize:13.5,color:"var(--text2)",lineHeight:1.7}}>Are you sure this job is complete?</p>
-              {(!job.certUploaded||!job.invoiceUploaded)&&<div style={{marginTop:12,padding:"10px 13px",background:"var(--amber-bg)",borderRadius:9,fontSize:12.5,color:"#92400E",display:"flex",alignItems:"center",gap:8}}>
+              {(!job.certUploaded||!job.invoiceUploaded)&& <div style={{marginTop:12,padding:"10px 13px",background:"var(--amber-bg)",borderRadius:9,fontSize:12.5,color:"#92400E",display:"flex",alignItems:"center",gap:8}}>
                 <span>⚠️</span><span>No {!job.certUploaded?"certificate":""}{!job.certUploaded&&!job.invoiceUploaded?" or ":""}{!job.invoiceUploaded?"invoice":""} uploaded. You can still complete but a hazard will be shown.</span>
               </div>}
             </Mod>}
@@ -2490,18 +2490,18 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           {/* Cert voice scratchpad — collapsible */}
           <div className="section-box mb-16">
             <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowCertNotes(p=>!p)}>
-              <span className="st">Certificate Notes {certText&&<span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
+              <span className="st">Certificate Notes {certText&& <span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
               <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
                 {showCertNotes&&(docVoice==="cert"
                   ? <button className="btn btn-xs btn-red" onClick={()=>stopDocVoice("cert")}><Ic n="stop" s={11}/> Stop</button>
                   : <button className="btn btn-ghost btn-xs" onClick={()=>startDocVoice("cert")} disabled={!!docVoice}><Ic n="mic" s={12}/> Voice</button>
                 )}
-                {certText&&<CopyBtn text={certText}/>}
+                {certText&& <CopyBtn text={certText}/>}
                 <Ic n={showCertNotes?"chevL":"chevR"} s={14} col="var(--text3)"/>
               </div>
             </div>
-            {showCertNotes&&<>
-              {docVoice==="cert"&&<div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+            {showCertNotes&& <>
+              {docVoice==="cert"&& <div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
                 <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
                 <span style={{fontSize:12,color:"var(--red)"}}>Listening… say "new line" for a line break</span>
               </div>}
@@ -2515,18 +2515,18 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           {/* Invoice voice scratchpad — collapsible */}
           <div className="section-box mb-16">
             <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowInvNotes(p=>!p)}>
-              <span className="st">Invoice Notes {invText&&<span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
+              <span className="st">Invoice Notes {invText&& <span style={{fontSize:10,color:"var(--teal)",fontWeight:600,marginLeft:6}}>✓ Has notes</span>}</span>
               <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
                 {showInvNotes&&(docVoice==="invoice"
                   ? <button className="btn btn-xs btn-red" onClick={()=>stopDocVoice("invoice")}><Ic n="stop" s={11}/> Stop</button>
                   : <button className="btn btn-ghost btn-xs" onClick={()=>startDocVoice("invoice")} disabled={!!docVoice}><Ic n="mic" s={12}/> Voice</button>
                 )}
-                {invText&&<CopyBtn text={invText}/>}
+                {invText&& <CopyBtn text={invText}/>}
                 <Ic n={showInvNotes?"chevL":"chevR"} s={14} col="var(--text3)"/>
               </div>
             </div>
-            {showInvNotes&&<>
-              {docVoice==="invoice"&&<div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+            {showInvNotes&& <>
+              {docVoice==="invoice"&& <div style={{padding:"8px 14px",background:"var(--red-bg)",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
                 <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
                 <span style={{fontSize:12,color:"var(--red)"}}>Listening… say "new line" for a line break</span>
               </div>}
@@ -2543,7 +2543,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
               <span className="st">Tasks <span style={{fontWeight:400,color:"var(--text3)",fontSize:12,marginLeft:4}}>Things to do for this job</span></span>
               <button className="btn btn-ghost btn-xs" onClick={()=>setShowAddTask(true)}><Ic n="plus" s={12}/> Add</button>
             </div>
-            {openJobTasks.length===0&&doneJobTasks.length===0&&<div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No tasks yet</div>}
+            {openJobTasks.length===0&&doneJobTasks.length===0&& <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No tasks yet</div>}
             {openJobTasks.map(t=>(
               <div key={t.id} className="task-row">
                 <HoldCheck done={false} onComplete={()=>completeTask(t.id)} onUncomplete={()=>{}}/>
@@ -2553,7 +2553,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
                 </div>
               </div>
             ))}
-            {doneJobTasks.length>0&&<>
+            {doneJobTasks.length>0&& <>
               <div style={{padding:"7px 16px",fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5,background:"#FAFBFF",borderTop:"1px solid var(--border)"}}>Completed</div>
               {doneJobTasks.map(t=>(
                 <div key={t.id} className="task-row done-row">
@@ -2567,13 +2567,13 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           {/* Unfinished Items */}
           <div className="section-box">
             <div className="section-box-head">
-              <div><span className="st">Unfinished Items</span><span style={{marginLeft:6,fontSize:11,color:"var(--text3)",fontWeight:400}}>Left on site — still to come back to</span>{ufOpen>0&&<span style={{marginLeft:6,fontSize:11.5,color:"var(--amber)",fontWeight:600}}>⚠ {ufOpen} open</span>}</div>
+              <div><span className="st">Unfinished Items</span><span style={{marginLeft:6,fontSize:11,color:"var(--text3)",fontWeight:400}}>Left on site — still to come back to</span>{ufOpen>0&& <span style={{marginLeft:6,fontSize:11.5,color:"var(--amber)",fontWeight:600}}>⚠ {ufOpen} open</span>}</div>
               <button className="btn btn-ghost btn-xs" onClick={()=>setShowUF(true)}><Ic n="plus" s={12}/> Add</button>
             </div>
             {job.unfinished.length===0?<div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No loose ends — all clear.</div>
             :job.unfinished.map(u=>(
               <div key={u.id} className="scope-item">
-                <div className={`scope-check${u.done?" on":""}`} onClick={()=>toggleUFItem(u.id)}>{u.done&&<Ic n="check" s={10} col="#fff"/>}</div>
+                <div className={`scope-check${u.done?" on":""}`} onClick={()=>toggleUFItem(u.id)}>{u.done&& <Ic n="check" s={10} col="#fff"/>}</div>
                 <div style={{fontSize:13.5,color:u.done?"var(--text3)":"var(--text)",textDecoration:u.done?"line-through":"none",flex:1}}>{u.text}</div>
               </div>
             ))}
@@ -2582,16 +2582,16 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           {/* Plans & Orders */}
           <div className="section-box mt-16">
             <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowPlans(p=>!p)}>
-              <span className="st">Plans & Orders {(job.plans||[]).length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"1px 7px",marginLeft:6}}>{(job.plans||[]).length}</span>}</span>
+              <span className="st">Plans & Orders {(job.plans||[]).length>0&& <span style={{fontSize:11,fontWeight:700,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"1px 7px",marginLeft:6}}>{(job.plans||[]).length}</span>}</span>
               <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
-                {showPlans&&<>
+                {showPlans&& <>
                   <input ref={planRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handlePlanUpload}/>
                   <button className="btn btn-ghost btn-xs" onClick={()=>planRef.current?.click()}><Ic n="upload" s={12}/> Upload</button>
                 </>}
                 <Ic n={showPlans?"chevL":"chevR"} s={14} col="var(--text3)"/>
               </div>
             </div>
-            {showPlans&&<div style={{padding:"12px 16px"}}>
+            {showPlans&& <div style={{padding:"12px 16px"}}>
               {(job.plans||[]).length===0
                 ?<p style={{fontSize:13,color:"var(--text3)",marginBottom:12}}>No plans or orders yet — tap Upload to add.</p>
                 :<div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:12}}>
@@ -2616,16 +2616,16 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
           <div className="section-box mt-16" style={{borderTop:"1px solid var(--border)"}}>
             <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowProspect(p=>!p)}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                {job.is_future_prospect&&<div style={{width:8,height:8,borderRadius:"50%",background:"#7C3AED",flexShrink:0}}/>}
+                {job.is_future_prospect&& <div style={{width:8,height:8,borderRadius:"50%",background:"#7C3AED",flexShrink:0}}/>}
                 <span style={{fontSize:12.5,fontWeight:600,color:"var(--text3)"}}>Future Prospect</span>
               </div>
               <Ic n={showProspect?"chevL":"chevR"} s={13} col="var(--text3)"/>
             </div>
-            {showProspect&&<div style={{padding:"12px 16px"}}>
+            {showProspect&& <div style={{padding:"12px 16px"}}>
               <textarea className="fta w-full" style={{minHeight:60,fontSize:13}} placeholder="Note a potential extra job or opportunity…" value={job.prospect_note||""} onChange={e=>upd({prospect_note:e.target.value})}/>
               <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10,cursor:"pointer"}} onClick={()=>upd({is_future_prospect:!job.is_future_prospect})}>
                 <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${job.is_future_prospect?"#7C3AED":"var(--border2)"}`,background:job.is_future_prospect?"#7C3AED":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                  {job.is_future_prospect&&<Ic n="check" s={10} col="#fff"/>}
+                  {job.is_future_prospect&& <Ic n="check" s={10} col="#fff"/>}
                 </div>
                 <span style={{fontSize:13,color:"var(--text2)"}}>Mark as future opportunity</span>
               </div>
@@ -2635,14 +2635,15 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
         </div>
       </div>
 
-      {showDupe&&<Mod title="Duplicate Job" onClose={()=>setShowDupe(false)} footer={<div className="flex gap-8"><button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button><button className="btn btn-teal" onClick={saveDupe}>Create Duplicate</button></div>}>
+      {showDupe && <Mod title="Duplicate Job" onClose={()=>setShowDupe(false)} footer={<div className="flex gap-8"><button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button><button className="btn btn-teal" onClick={saveDupe}>Create Duplicate</button></div>}>
         <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12}}>Pre-filled from <strong>{job.address||job.name}</strong>. Edit what's different — typically just the address.</p>
         <div className="fg"><label className="fl">Address *</label><input className="fi" placeholder="New site address" value={dupeForm.address||""} onChange={e=>setDupeForm(p=>({...p,address:e.target.value}))} autoFocus/></div>
         <div className="fr"><div className="fg"><label className="fl">Customer</label><input className="fi" value={dupeForm.client||""} onChange={e=>setDupeForm(p=>({...p,client:e.target.value}))}/></div><div className="fg"><label className="fl">Builder</label><input className="fi" value={dupeForm.builder||""} onChange={e=>setDupeForm(p=>({...p,builder:e.target.value}))}/></div></div>
         <div className="fr"><div className="fg"><label className="fl">Phone</label><input className="fi" value={dupeForm.phone||""} onChange={e=>setDupeForm(p=>({...p,phone:e.target.value}))}/></div><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={dupeForm.date||""} onChange={e=>setDupeForm(p=>({...p,date:e.target.value}))}/></div></div>
         <div className="fg"><label className="fl">Value AUD</label><input type="number" className="fi" value={dupeForm.value||""} onChange={e=>setDupeForm(p=>({...p,value:e.target.value}))}/></div>
         <div className="fg"><label className="fl">Scope of Works</label><textarea className="fta" style={{minHeight:80}} value={dupeForm.scope||""} onChange={e=>setDupeForm(p=>({...p,scope:e.target.value}))}/></div>
-      </Mod>} onClose={()=>setShowAddTask(false)}
+      </Mod>}
+      {showAddTask && <Mod title="Add Task" onClose={()=>setShowAddTask(false)}
         footer={<><button className="btn btn-ghost" onClick={()=>setShowAddTask(false)}>Cancel</button><button className="btn btn-blue" onClick={addTask}>Add Task</button></>}>
         <div className="fg"><label className="fl">What needs doing?</label><input className="fi" value={tf.title} onChange={e=>setTf(f=>({...f,title:e.target.value}))} placeholder="e.g. Call Marcus re: cable order" autoFocus/></div>
         <JobSearchInput jobs={jobs} value={tf.jobId||""} onChange={(id)=>setTf(f=>({...f,jobId:id}))}/>
@@ -2652,7 +2653,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
         </div>
         <div className="fg"><label className="fl">Due Date (optional)</label><input type="date" className="fi" value={tf.dueDate} onChange={e=>setTf(f=>({...f,dueDate:e.target.value}))}/></div>
       </Mod>}
-      {showUF&&<Mod title="Add Unfinished Item" onClose={()=>setShowUF(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowUF(false)}>Cancel</button><button className="btn btn-blue" onClick={addUF}>Add</button></>}><input className="fi w-full" value={ufText} onChange={e=>setUfText(e.target.value)} placeholder="e.g. Return to fit cover plate in loft" autoFocus/></Mod>}
+      {showUF && <Mod title="Add Unfinished Item" onClose={()=>setShowUF(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowUF(false)}>Cancel</button><button className="btn btn-blue" onClick={addUF}>Add</button></>}><input className="fi w-full" value={ufText} onChange={e=>setUfText(e.target.value)} placeholder="e.g. Return to fit cover plate in loft" autoFocus/></Mod>}
     </div>
   );
 };
@@ -2675,8 +2676,8 @@ const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
         <button className="btn-ic" onClick={onCancel}><Ic n="chevL" s={16}/></button>
         <div><h1 style={{fontSize:20,fontWeight:700}}>Create Job</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>All sections auto-created on save</p></div>
       </div>
-      {prefill&&<div className="hint mb-16"><Ic n="alert" s={16}/><span>Pre-filled from client intake — review before saving.</span></div>}
-      {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setF(f=>({...f,...p}));setShowWOScanner(false);}}/>}
+      {prefill&& <div className="hint mb-16"><Ic n="alert" s={16}/><span>Pre-filled from client intake — review before saving.</span></div>}
+      {showWOScanner&& <WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setF(f=>({...f,...p}));setShowWOScanner(false);}}/>}
       <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:16,fontFamily:"'Inter',sans-serif"}}>
         <span style={{fontSize:20}}>📋</span>
         <div style={{textAlign:"left"}}>
@@ -2792,9 +2793,9 @@ const AssetsPage = ({assets,setAssets}) => {
       </div>
       <div className="li-main">
         <div className="li-title">{a.name}</div>
-        {a.rego&&<div style={{fontSize:11.5,color:"var(--text3)",fontFamily:"monospace",marginTop:1}}>{a.rego}</div>}
-        {a.notes&&<div style={{fontSize:12.5,color:"var(--text2)",marginTop:4,lineHeight:1.5}}>{a.notes}</div>}
-        {a.serviceReminder&&<div style={{marginTop:5,fontSize:12,color:"var(--amber)",display:"flex",alignItems:"center",gap:4}}><Ic n="clock" s={12} col="var(--amber)"/>Due: {a.serviceReminder}</div>}
+        {a.rego&& <div style={{fontSize:11.5,color:"var(--text3)",fontFamily:"monospace",marginTop:1}}>{a.rego}</div>}
+        {a.notes&& <div style={{fontSize:12.5,color:"var(--text2)",marginTop:4,lineHeight:1.5}}>{a.notes}</div>}
+        {a.serviceReminder&& <div style={{marginTop:5,fontSize:12,color:"var(--amber)",display:"flex",alignItems:"center",gap:4}}><Ic n="clock" s={12} col="var(--amber)"/>Due: {a.serviceReminder}</div>}
       </div>
       <div className="flex gap-8">
         <button className="btn-ic" onClick={()=>openEdit(a)}><Ic n="edit" s={14}/></button>
@@ -2814,7 +2815,7 @@ const AssetsPage = ({assets,setAssets}) => {
         <div><div className="st mb-12">Tools &amp; Equipment</div><div className="card mb-16" style={{padding:0}}>{tools.length===0?<div className="em"><Ic n="tool" s={28} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No tools</p></div>:tools.map(a=><AssetRow key={a.id} a={a}/>)}</div></div>
       </div>
 
-      {(showNew||(editId&&editAsset))&&<Mod title={editId?"Edit Asset":"Add Asset"} onClose={()=>{setShowNew(false);setEditId(null)}}
+      {(showNew||(editId&&editAsset))&& <Mod title={editId?"Edit Asset":"Add Asset"} onClose={()=>{setShowNew(false);setEditId(null)}}
         footer={<><button className="btn btn-ghost" onClick={()=>{setShowNew(false);setEditId(null)}}>Cancel</button><button className="btn btn-teal" onClick={save}>{editId?"Save Changes":"Add Asset"}</button></>}>
         <div className="fg"><label className="fl">Name *</label><input className="fi" placeholder="e.g. Transit Custom, Fluke 1664FC" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div>
         <div className="fr">
@@ -2853,7 +2854,7 @@ const WorkersPage = ({workers,setWorkers}) => {
           return <div key={w.id} className="card p-20">
             <div className="flex ai-c gap-12 mb-12">
               <div className="av" style={{width:44,height:44,fontSize:16,borderRadius:12,flexShrink:0}}>{ini(w.name)}</div>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{w.name}</div>{w.role&&<div style={{fontSize:12.5,color:"var(--text3)"}}>{w.role}</div>}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{w.name}</div>{w.role&& <div style={{fontSize:12.5,color:"var(--text3)"}}>{w.role}</div>}</div>
               <button className="btn btn-ghost btn-xs" onClick={()=>{setSelW(w);setHf({date:TODAY,hrs:""})}}>Log Hours</button>
             </div>
             <div style={{display:"flex",gap:12,marginBottom:10}}>
@@ -2867,13 +2868,13 @@ const WorkersPage = ({workers,setWorkers}) => {
               </div>
             </div>
             {w.hours.slice(0,4).map((h,i)=><div key={i} className="dr" style={{padding:"5px 0"}}><div className="dl">{fmtDate(h.date)}</div><div className="dv" style={{fontSize:13}}>{h.hrs}h</div></div>)}
-            {w.hours.length===0&&<p style={{fontSize:13,color:"var(--text3)"}}>No hours logged</p>}
+            {w.hours.length===0&& <p style={{fontSize:13,color:"var(--text3)"}}>No hours logged</p>}
           </div>;
         })}
       </div>
-      {workers.length===0&&<div className="card em"><Ic n="workers" s={32} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No workers yet</p></div>}
-      {showNew&&<Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}><div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice, VA" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div></Mod>}
-      {selW&&<Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div></Mod>}
+      {workers.length===0&& <div className="card em"><Ic n="workers" s={32} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No workers yet</p></div>}
+      {showNew&& <Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}><div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice, VA" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div></Mod>}
+      {selW&& <Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div></Mod>}
     </div>
   );
 };
@@ -3177,7 +3178,7 @@ const SWMSPage = ({jobs, logoUrl}) => {
 
   const Tick=({checked,onToggle})=>(
     <div onClick={e=>{e.stopPropagation();onToggle();}} style={{width:20,height:20,borderRadius:4,border:`2px solid ${checked?"var(--teal)":"var(--border2)"}`,background:checked?"var(--teal)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
-      {checked&&<Ic n="check" s={11} col="#fff"/>}
+      {checked&& <Ic n="check" s={11} col="#fff"/>}
     </div>
   );
 
@@ -3188,7 +3189,7 @@ const SWMSPage = ({jobs, logoUrl}) => {
         <p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>Safe Work Method Statement — any trade</p>
       </div>
 
-      {logoUrl&&<div style={{textAlign:"center",marginBottom:16}}>
+      {logoUrl&& <div style={{textAlign:"center",marginBottom:16}}>
         <img src={logoUrl} alt="logo" style={{maxHeight:48,maxWidth:160,objectFit:"contain"}}/>
       </div>}
 
@@ -3259,7 +3260,7 @@ const SWMSPage = ({jobs, logoUrl}) => {
             <Tick checked={f.selectedHazards.includes(h.id)} onToggle={()=>toggleHazard(h.id)}/>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>{h.label}</div>
-              {f.selectedHazards.includes(h.id)&&<div style={{fontSize:11.5,color:"var(--text3)",lineHeight:1.5}}>{h.controls}</div>}
+              {f.selectedHazards.includes(h.id)&& <div style={{fontSize:11.5,color:"var(--text3)",lineHeight:1.5}}>{h.controls}</div>}
             </div>
           </div>
         ))}
@@ -3418,7 +3419,7 @@ export default function App() {
     <>
       <style>{CSS}</style>
       <div className="app">
-        {sbOpen&&<div className="sb-ov" onClick={()=>setSbOpen(false)}/>}
+        {sbOpen&& <div className="sb-ov" onClick={()=>setSbOpen(false)}/>}
         <aside className={`sb${sbOpen?" open":""}`}>
           {/* Sidebar header — company logo when uploaded, else SoleTasker wordmark */}
           <div className="sb-logo" onClick={()=>go("dashboard")} style={{flexDirection:"column",gap:0,alignItems:"center",justifyContent:"center",padding:"14px 14px 12px"}}>
@@ -3433,11 +3434,11 @@ export default function App() {
           <nav className="sb-nav">
             {navGroups.map((g,gi)=>(
               <div key={gi}>
-                {g.label&&<div className="nav-sec">{g.label}</div>}
+                {g.label&& <div className="nav-sec">{g.label}</div>}
                 {g.items.map(it=>(
                   <div key={it.id} className={`nav-it${nav===it.id?" on":""}`} onClick={()=>go(it.id)}>
                     <Ic n={it.icon} s={16}/>{it.label}
-                    {it.badge>0&&<span className="nav-badge">{it.badge}</span>}
+                    {it.badge>0&& <span className="nav-badge">{it.badge}</span>}
                   </div>
                 ))}
               </div>
@@ -3456,12 +3457,12 @@ export default function App() {
             <div className="topbar-div"/>
             <span style={{fontSize:13,color:"var(--text2)",fontWeight:500}}>{new Date().toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"})}</span>
             <div className="topbar-div"/>
-            {overdue>0&&<span style={{fontSize:13,fontWeight:600,color:"var(--red)",display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--red)",display:"inline-block"}}/>Overdue: {overdue}</span>}
-            {dueToday>0&&<span style={{fontSize:13,fontWeight:500,color:"var(--amber)",display:"flex",alignItems:"center",gap:5,marginLeft:10}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>Due Today: {dueToday}</span>}
-            {done12>0&&<span style={{fontSize:13,fontWeight:500,color:"var(--green)",display:"flex",alignItems:"center",gap:5,marginLeft:10}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block"}}/>Done: {done12}</span>}
+            {overdue>0&& <span style={{fontSize:13,fontWeight:600,color:"var(--red)",display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--red)",display:"inline-block"}}/>Overdue: {overdue}</span>}
+            {dueToday>0&& <span style={{fontSize:13,fontWeight:500,color:"var(--amber)",display:"flex",alignItems:"center",gap:5,marginLeft:10}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>Due Today: {dueToday}</span>}
+            {done12>0&& <span style={{fontSize:13,fontWeight:500,color:"var(--green)",display:"flex",alignItems:"center",gap:5,marginLeft:10}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",display:"inline-block"}}/>Done: {done12}</span>}
             <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
-              {nav!=="dashboard"&&<button className="btn btn-ghost btn-sm" onClick={()=>setShowAddTask(true)}><Ic n="plus" s={13}/> Add Task</button>}
-              {nav!=="dashboard"&&<button className="btn btn-blue btn-sm" onClick={()=>openCapture("voice")} style={{fontWeight:700,paddingLeft:14,paddingRight:14}}><Ic n="mic" s={14}/> Voice</button>}
+              {nav!=="dashboard"&& <button className="btn btn-ghost btn-sm" onClick={()=>setShowAddTask(true)}><Ic n="plus" s={13}/> Add Task</button>}
+              {nav!=="dashboard"&& <button className="btn btn-blue btn-sm" onClick={()=>openCapture("voice")} style={{fontWeight:700,paddingLeft:14,paddingRight:14}}><Ic n="mic" s={14}/> Voice</button>}
               <div className="av" style={{width:34,height:34,cursor:"pointer"}} onClick={()=>go("account")}>{ini(ACCOUNT.name)}<div className="av-dot"/></div>
             </div>
           </div>
@@ -3471,7 +3472,7 @@ export default function App() {
               <Ic n={nav==="dashboard"?"menu":"chevL"} s={18}/>
             </button>
             <span className="mob-top-title">{pageLabel}</span>
-            {nav!=="dashboard"&&<div className="flex gap-8">
+            {nav!=="dashboard"&& <div className="flex gap-8">
               <button className="btn btn-ghost btn-sm" onClick={()=>setShowAddTask(true)} style={{padding:"6px 10px"}}><Ic n="plus" s={14}/></button>
               <button className="btn btn-blue btn-sm" onClick={()=>openCapture("voice")} style={{padding:"6px 12px",fontWeight:700}}><Ic n="mic" s={14}/></button>
             </div>}
@@ -3490,7 +3491,7 @@ export default function App() {
         </main>
       </div>
 
-      {showCapture&&<CaptureModal
+      {showCapture showCapture&& <CaptureModalshowCapture&& <CaptureModal <CaptureModal
         mode={captureMode}
         jobs={jobs}
         onClose={()=>setShowCapture(false)}
@@ -3500,7 +3501,7 @@ export default function App() {
         onCreateJob={handleCreateJob}
         onAddToJob={handleAddToJob}
       />}
-      {showAddTask&&<AddTaskModal
+      {showAddTask&& <AddTaskModal
         jobs={jobs}
         onVoice={()=>openCapture("voice")}
         onCreateJob={handleCreateJob}
