@@ -1,8 +1,11 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const TODAY = new Date().toISOString().split("T")[0];
 const TEAM_MEMBERS = ["Me", "VA", "Jake Holden", "Matt Reeves"];
+// Format ISO date to Australian display format
+const fmtDate=(iso)=>{if(!iso)return"";const[y,m,d]=iso.split("-");const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;};
 // mailto body builder — raw newlines, browser handles encoding
 const mb=(...lines)=>encodeURIComponent(lines.filter(l=>l!=null).join("\n\n").replace(/Regards,%0A/g,"Regards,\n"));
 
@@ -42,8 +45,8 @@ const DAILY_QUOTE = DAILY_QUOTES[new Date(TODAY).getDate() % DAILY_QUOTES.length
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const SEED_JOBS = [
-  { id:"J001", ref:"J-001", name:"Webb Rewire", client:"Marcus Webb", address:"14 Birchwood Ave, Northside", phone:"07812 441 223", email:"m.webb@email.com", scope:"Full house rewire. Consumer unit upgrade to RCBO board. Loft circuit to be added.", notes:"", notesLog:[{id:"NL001",text:"Check loft access — may need scaffolding for upper circuits.",date:"2026-04-06",time:"08:30",via:"manual",photos:[]}], status:"active", checkboxes:{booked:true,cert:false,invoice:false,completed:false}, certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"", tasks:["T001","T002"], scopeItems:[{id:"SI001",text:"Strip existing wiring — ground floor",done:false},{id:"SI002",text:"Install new consumer unit",done:true},{id:"SI003",text:"First fix — ground floor circuits",done:true},{id:"SI004",text:"First fix — upper floor circuits",done:false},{id:"SI005",text:"Loft circuit installation",done:false}], unfinished:[{id:"UF001",text:"Confirm loft hatch dimensions before next visit",done:false}], memos:[], photos:[], date:"2026-04-07", value:8500 },
-  { id:"J004", ref:"J-004", name:"Malone Consumer Unit", client:"Terry Malone", address:"22 Station Rd, Lowmoor", phone:"07700 900 123", email:"terry.m@gmail.com", scope:"Replace old rewireable fuse board with modern RCBO consumer unit.", notes:"", notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}], unfinished:[], memos:[], photos:[], date:"2026-03-28", value:2200, status:"completed", checkboxes:{booked:true,cert:true,invoice:true,completed:true}, certUploaded:true,invoiceUploaded:true,certNotes:"",invNotes:"", tasks:[], scopeItems:[{id:"SI030",text:"Remove old fuse board",done:true},{id:"SI031",text:"Install new RCBO board",done:true},{id:"SI032",text:"Test all circuits",done:true},{id:"SI033",text:"Issue EIC certificate",done:true}], notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}] },
+  { id:"J001", ref:"J-001", name:"Webb Rewire", client:"Marcus Webb", address:"14 Birchwood Ave, Northside", phone:"07812 441 223", email:"m.webb@email.com", scope:"Full house rewire. Consumer unit upgrade to RCBO board. Loft circuit to be added.", notes:"", notesLog:[{id:"NL001",text:"Check loft access — may need scaffolding for upper circuits.",date:"2026-04-06",time:"08:30",via:"manual",photos:[]}], status:"active", checkboxes:{booked:true,cert:false,invoice:false,completed:false}, certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"", tasks:["T001","T002"], scopeItems:[{id:"SI001",text:"Strip existing wiring — ground floor",done:false},{id:"SI002",text:"Install new consumer unit",done:true},{id:"SI003",text:"First fix — ground floor circuits",done:true},{id:"SI004",text:"First fix — upper floor circuits",done:false},{id:"SI005",text:"Loft circuit installation",done:false}], unfinished:[{id:"UF001",text:"Confirm loft hatch dimensions before next visit",done:false}], memos:[], photos:[], plans:[], date:"2026-04-07", value:8500 },
+  { id:"J004", ref:"J-004", name:"Malone Consumer Unit", client:"Terry Malone", address:"22 Station Rd, Lowmoor", phone:"07700 900 123", email:"terry.m@gmail.com", scope:"Replace old rewireable fuse board with modern RCBO consumer unit.", notes:"", notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}], unfinished:[], memos:[], photos:[], plans:[], date:"2026-03-28", value:2200, status:"completed", checkboxes:{booked:true,cert:true,invoice:true,completed:true}, certUploaded:true,invoiceUploaded:true,certNotes:"",invNotes:"", tasks:[], scopeItems:[{id:"SI030",text:"Remove old fuse board",done:true},{id:"SI031",text:"Install new RCBO board",done:true},{id:"SI032",text:"Test all circuits",done:true},{id:"SI033",text:"Issue EIC certificate",done:true}], notesLog:[{id:"NL002",text:"Completed. EIC issued and handed to client.",date:"2026-03-28",time:"14:00",via:"manual",photos:[]}] },
 ];
 
 const SEED_TASKS = [
@@ -645,7 +648,153 @@ const JobSearchInput = ({jobs=[], value, onChange, label="Link to Job (optional)
   );
 };
 
-// ─── VOICE CAPTURE MODAL ──────────────────────────────────────────────────────
+// ─── AI WORK ORDER PARSER ─────────────────────────────────────────────────────
+// Parses a work order from either pasted text or a base64 image
+const analyseWorkOrder = async (input) => {
+  const prompt = `You are parsing a builder's work order for an Australian tradie using SoleTasker.
+
+Extract ALL job details from this work order. Return ONLY valid JSON, no markdown:
+{
+  "address": "full site address or null",
+  "client": "homeowner or client name or null",
+  "builder": "builder or builder company name or null",
+  "builder_contact": "builder contact name if different from builder or null",
+  "phone": "phone number or null",
+  "email": "email address or null",
+  "date_required": "date in YYYY-MM-DD format or null",
+  "scope": "full scope of works — every task mentioned, written as clear instructions",
+  "value": "dollar amount as number or null",
+  "notes": "any other relevant info, access instructions, special requirements or null"
+}
+
+Rules:
+- address is the SITE address where work is to be performed, not the builder's office
+- scope should capture everything — be thorough, this is what the tradie will work from
+- If multiple trades mentioned, include all scope items
+- Australian date formats: convert DD/MM/YYYY to YYYY-MM-DD`;
+
+  try {
+    const content = input.type === "image"
+      ? [{type:"image",source:{type:"base64",media_type:input.mediaType,data:input.data}},{type:"text",text:prompt}]
+      : [{type:"text",text:`${prompt}\n\nWork order text:\n${input.text}`}];
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":process.env.REACT_APP_ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01"},
+      body: JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:800, messages:[{role:"user",content}]})
+    });
+    const data = await res.json();
+    const raw = data.content?.map(b=>b.text||"").join("")||"";
+    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  } catch(e) {
+    return null;
+  }
+};
+
+
+// ─── WORK ORDER SCANNER ───────────────────────────────────────────────────────
+const WorkOrderScanner = ({onClose, onJobPrefill}) => {
+  const [tab, setTab] = useState("text");
+  const [pastedText, setPastedText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [error, setError] = useState("");
+  const photoRef = useRef(null);
+
+  const compressImage = (file) => new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      img.onload = () => {
+        const MAX = 1600;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        const base64 = c.toDataURL("image/jpeg", 0.85).split(",")[1];
+        resolve({type:"image", data:base64, mediaType:"image/jpeg"});
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const parse = async (input) => {
+    setParsing(true); setError("");
+    const result = await analyseWorkOrder(input);
+    setParsing(false);
+    if(!result){
+      setError("Couldn't read the work order. Make sure the API key is active, or try again.");
+      return;
+    }
+    onJobPrefill({
+      address:result.address||"",
+      client:result.client||"",
+      builder:result.builder||"",
+      phone:result.phone||"",
+      email:result.email||"",
+      date:result.date_required||"",
+      scope:result.scope||"",
+      value:result.value||"",
+      notes:result.notes||"",
+    });
+    onClose();
+  };
+
+  const handlePhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const input = await compressImage(file);
+    await parse(input);
+  };
+
+  return (
+    <Mod title="Scan Work Order" onClose={onClose}
+      footer={
+        tab==="text"
+          ? <><button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+              <button className="btn btn-teal" onClick={()=>parse({type:"text",text:pastedText})} disabled={!pastedText.trim()||parsing}>
+                {parsing?"Reading…":"Extract Job Details"}
+              </button></>
+          : <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+      }>
+      <div style={{display:"flex",gap:4,background:"var(--bg)",borderRadius:9,padding:4,marginBottom:16}}>
+        {[["text","📋 Paste Text"],["photo","📷 Photo / PDF"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{flex:1,padding:"7px 4px",borderRadius:6,border:"none",fontSize:12.5,fontWeight:tab===id?700:500,background:tab===id?"#fff":"transparent",color:tab===id?"var(--navy)":"var(--text3)",boxShadow:tab===id?"0 1px 3px rgba(0,0,0,.1)":"none",cursor:"pointer"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab==="text"&&<>
+        <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:10,lineHeight:1.5}}>Copy the work order text from your email and paste it below. AI extracts all job details.</p>
+        <textarea className="fta w-full" style={{minHeight:160,fontSize:12.5}} placeholder={"Paste work order text here…\n\nTip: In Gmail/Mail, select all text in the email, copy, then paste here."} value={pastedText} onChange={e=>setPastedText(e.target.value)} autoFocus/>
+        {pastedText.length>0&&<div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{pastedText.length} characters pasted</div>}
+      </>}
+
+      {tab==="photo"&&<>
+        <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12,lineHeight:1.5}}>Screenshot the PDF or email, save to Photos, then upload below.</p>
+        <div style={{background:"var(--bg)",borderRadius:10,border:"2px dashed var(--border)",padding:"28px 20px",textAlign:"center",marginBottom:12}}>
+          <div style={{fontSize:32,marginBottom:8}}>📄</div>
+          <div style={{fontSize:13,fontWeight:600,color:"var(--text2)",marginBottom:4}}>Work Order Photo or Screenshot</div>
+          <div style={{fontSize:11.5,color:"var(--text3)",marginBottom:16,lineHeight:1.5}}>Save the PDF or email screenshot to Photos, then tap below</div>
+          <input ref={photoRef} type="file" accept="image/*" style={{display:"none"}} onChange={handlePhoto}/>
+          <button className="btn btn-teal" onClick={()=>photoRef.current?.click()} disabled={parsing}>{parsing?"Reading…":"📷 Choose Photo"}</button>
+        </div>
+        <div style={{background:"var(--blue-l)",borderRadius:9,padding:"10px 13px",fontSize:12,color:"var(--navy)",lineHeight:1.6}}>
+          💡 <strong>iPhone tip:</strong> Open the PDF in Mail → screenshot (side + volume up) → saves to Photos automatically.
+        </div>
+      </>}
+
+      {parsing&&<div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"var(--teal-l)",borderRadius:9,marginTop:12}}>
+        <div className="wv" style={{display:"inline-flex",gap:2}}>{[5,8,11,8,5].map((h,i)=><div key={i} className="wb" style={{height:h,width:2,animationDelay:`${i*.1}s`}}/>)}</div>
+        <span style={{fontSize:13,color:"var(--teal2)",fontWeight:600}}>AI is reading the work order…</span>
+      </div>}
+      {error&&<div style={{marginTop:12,padding:"10px 13px",background:"var(--red-bg)",borderRadius:9,fontSize:12.5,color:"var(--red)"}}>{error}</div>}
+    </Mod>
+  );
+};
+
 // Record → stop → transcript + 4 action buttons shown IMMEDIATELY
 // AI parses in background ONLY after user picks an action, pre-fills confirm form
 // Thought Dump is a first-class option — saves instantly as reminder, no form
@@ -658,7 +807,18 @@ const CaptureModal = ({
   const [editing, setEditing] = useState(false);
   const [timer, setTimer] = useState(0);
   const [confirmType, setConfirmType] = useState(null);
-  const [confirming, setConfirming] = useState(false); // AI running in background
+  const [confirming, setConfirming] = useState(false);
+  const [showWOScanner, setShowWOScanner] = useState(false);
+  const [scopeRec, setScopeRec] = useState(false);
+  const scopeSrRef = useRef(null);
+  const startScopeVoice=(setter)=>{
+    setScopeRec(true);
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-AU";
+      sr.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join(" ");setter(t);};
+      sr.start();scopeSrRef.current=sr;}
+  };
+  const stopScopeVoice=()=>{try{scopeSrRef.current?.stop();}catch(e){}setScopeRec(false);};
   const [taskDraft, setTaskDraft] = useState({title:"",priority:"P2",assignedTo:"Me",jobId:"",dueDate:"",notes:""});
   const [jobDraft, setJobDraft] = useState({name:"",client:"",address:"",scope:"",notes:""});
   const [reminderDraft, setReminderDraft] = useState({title:"",notes:"",dueDate:"",dueTime:"",linkedJobId:""});
@@ -671,7 +831,7 @@ const CaptureModal = ({
     tRef.current = setInterval(()=>setTimer(t=>{if(t>=MAX-1){stopRec();return t+1;}return t+1;}),1000);
     const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
     if(SR){
-      const sr=new SR(); sr.continuous=true; sr.interimResults=true; sr.lang="en-GB";
+      const sr=new SR(); sr.continuous=true; sr.interimResults=true; sr.lang="en-AU";
       sr.onresult=e=>{setText(Array.from(e.results).map(r=>r[0].transcript).join(" "))};
       sr.start(); srRef.current=sr;
     }
@@ -915,11 +1075,27 @@ const CaptureModal = ({
         </>}
 
         {confirmType==="job"&&<>
+          {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJobDraft(d=>({...d,...p}));setShowWOScanner(false);}}/>}
+          <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:12,fontFamily:"'Inter',sans-serif"}}>
+            <span style={{fontSize:20}}>📋</span>
+            <div style={{textAlign:"left"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>Scan Work Order</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,.8)"}}>Paste email text or upload a photo — AI fills the form</div>
+            </div>
+          </button>
           <div className="fg"><label className="fl">Address</label><input className="fi" placeholder="Site address" value={jobDraft.address} onChange={e=>setJobDraft(p=>({...p,address:e.target.value}))} autoFocus/></div>
           <div className="fg"><label className="fl">Customer</label><input className="fi" placeholder="e.g. Marcus Webb" value={jobDraft.client} onChange={e=>setJobDraft(p=>({...p,client:e.target.value}))}/></div>
           <div className="fg"><label className="fl">Builder (optional)</label><input className="fi" placeholder="e.g. Hargreaves Build Co." value={jobDraft.builder||""} onChange={e=>setJobDraft(p=>({...p,builder:e.target.value}))}/></div>
           <div className="fg"><label className="fl">Phone (optional)</label><input className="fi" placeholder="e.g. 0400 123 456" value={jobDraft.phone||""} onChange={e=>setJobDraft(p=>({...p,phone:e.target.value}))}/></div>
-          <div className="fg"><label className="fl">Scope of Works</label><textarea className="fta" style={{minHeight:80}} value={jobDraft.scope} onChange={e=>setJobDraft(p=>({...p,scope:e.target.value}))}/></div>
+          <div className="fg">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+              <label className="fl" style={{marginBottom:0}}>Scope of Works</label>
+              {scopeRec
+                ?<button className="btn btn-xs btn-red" onClick={stopScopeVoice}><Ic n="stop" s={10}/> Stop</button>
+                :<button className="btn btn-ghost btn-xs" onClick={()=>startScopeVoice(v=>setJobDraft(p=>({...p,scope:v})))}><Ic n="mic" s={11}/> Voice</button>}
+            </div>
+            <textarea className="fta" style={{minHeight:80}} value={jobDraft.scope} onChange={e=>setJobDraft(p=>({...p,scope:e.target.value}))}/>
+          </div>
         </>}
 
         {confirmType==="reminder"&&<>
@@ -996,7 +1172,7 @@ const InboxPage = ({inbox,setInbox,tasks,setTasks,reminders,setReminders,jobs,on
               <div style={{width:7,height:7,borderRadius:"50%",background:"var(--orange)",flexShrink:0,marginTop:6}}/>
               <div style={{flex:1}}>
                 <div style={{fontSize:13.5,color:"var(--text)",lineHeight:1.6}}>{n.text}</div>
-                <div style={{fontSize:11.5,color:"var(--text3)",marginTop:4}}>{n.date} · via {n.source||"capture"}</div>
+                <div style={{fontSize:11.5,color:"var(--text3)",marginTop:4}}>{fmtDate(n.date)} · via {n.source||"capture"}</div>
               </div>
               <div className="flex gap-8">
                 <button className="btn btn-xs" style={{background:"var(--blue-l)",color:"var(--blue)",border:"none",fontWeight:600}} onClick={()=>{setPromoteId(n.id);setPf({title:n.text.slice(0,80),priority:"P2",assignedTo:"Me",jobId:"",dueDate:""})}}>
@@ -1027,7 +1203,8 @@ const InboxPage = ({inbox,setInbox,tasks,setTasks,reminders,setReminders,jobs,on
 
 // ─── ADD TASK MODAL — structured creation: choose type first, then fill form ──
 const AddTaskModal = ({jobs=[], onVoice, onCreateJob, onSaveTask, onSaveReminder, onNav, onClose}) => {
-  const [step, setStep] = useState("choose"); // "choose" | "task" | "job" | "reminder"
+  const [step, setStep] = useState("choose");
+  const [showWOScanner, setShowWOScanner] = useState(false);
   const [tf, setTf] = useState({title:"",priority:"P2",assignedTo:"Me",dueDate:"",jobId:"",notes:""});
   const [jf, setJf] = useState({name:"",client:"",address:"",scope:"",notes:""});
   const [rf, setRf] = useState({title:"",notes:"",dueDate:"",dueTime:"",linkedJobId:""});
@@ -1067,12 +1244,28 @@ const AddTaskModal = ({jobs=[], onVoice, onCreateJob, onSaveTask, onSaveReminder
   if(step==="job") return (
     <Mod title="New Job" onClose={onClose} lg
       footer={<><button className="btn btn-ghost" onClick={()=>setStep("choose")}>← Back</button><button className="btn btn-teal" onClick={saveJob}>Create Job</button></>}>
+      {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setJf(f=>({...f,...p}));setShowWOScanner(false);}}/>}
+      <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:12,fontFamily:"'Inter',sans-serif"}}>
+        <span style={{fontSize:20}}>📋</span>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>Scan Work Order</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,.8)"}}>Paste email text or upload a photo — AI fills the form</div>
+        </div>
+      </button>
+      <div className="fg"><label className="fl">Address</label><input className="fi" placeholder="Site address" value={jf.address} onChange={e=>setJf(p=>({...p,address:e.target.value}))} autoFocus/></div>
       <div className="fr">
-        <div className="fg"><label className="fl">Job Name *</label><input className="fi" placeholder="e.g. Webb Rewire" value={jf.name} onChange={e=>setJf(p=>({...p,name:e.target.value}))} autoFocus/></div>
-        <div className="fg"><label className="fl">Client</label><input className="fi" placeholder="e.g. Marcus Webb" value={jf.client} onChange={e=>setJf(p=>({...p,client:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Customer</label><input className="fi" placeholder="e.g. Marcus Webb" value={jf.client} onChange={e=>setJf(p=>({...p,client:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Builder</label><input className="fi" placeholder="e.g. Hargreaves" value={jf.builder||""} onChange={e=>setJf(p=>({...p,builder:e.target.value}))}/></div>
       </div>
-      <div className="fg"><label className="fl">Address</label><input className="fi" placeholder="Site address" value={jf.address} onChange={e=>setJf(p=>({...p,address:e.target.value}))}/></div>
-      <div className="fg"><label className="fl">Scope of Works</label><textarea className="fta" style={{minHeight:80}} placeholder="What needs doing" value={jf.scope} onChange={e=>setJf(p=>({...p,scope:e.target.value}))}/></div>
+      <div className="fg">
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+          <label className="fl" style={{marginBottom:0}}>Scope of Works</label>
+          {showWOScanner?null:scopeRec
+            ?<button className="btn btn-xs btn-red" onClick={()=>{try{scopeSrRef.current?.stop();}catch(e){}setScopeRec(false);}}><Ic n="stop" s={10}/> Stop</button>
+            :<button className="btn btn-ghost btn-xs" onClick={()=>{setScopeRec(true);const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(SR){const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-AU";sr.onresult=e=>{const t=Array.from(e.results).map(r=>r[0].transcript).join(" ");setJf(p=>({...p,scope:t}));};sr.start();scopeSrRef.current=sr;}}}><Ic n="mic" s={11}/> Voice</button>}
+        </div>
+        <textarea className="fta" style={{minHeight:80}} placeholder="What needs doing" value={jf.scope} onChange={e=>setJf(p=>({...p,scope:e.target.value}))}/>
+      </div>
     </Mod>
   );
 
@@ -1120,12 +1313,28 @@ const AddTaskModal = ({jobs=[], onVoice, onCreateJob, onSaveTask, onSaveReminder
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingIntake,setPendingIntake,onNav,onVoiceMemo,onAddTask}) => {
-  const overdue=tasks.filter(t=>!t.done&&t.dueDate&&t.dueDate<TODAY).length
+  const openTaskCount=tasks.filter(t=>!t.done).length;
+  const openReminderCount=reminders.filter(r=>!r.done).length;
+  const pendingCount=pendingIntake.length;
+  const overdueCount=tasks.filter(t=>!t.done&&t.dueDate&&t.dueDate<TODAY).length
     + reminders.filter(r=>!r.done&&r.dueDate&&r.dueDate<TODAY).length;
-  const dueToday=tasks.filter(t=>!t.done&&t.dueDate===TODAY).length
-    + reminders.filter(r=>!r.done&&r.dueDate===TODAY).length;
-  const upcoming=tasks.filter(t=>!t.done&&t.dueDate&&t.dueDate>TODAY).length
-    + reminders.filter(r=>!r.done&&r.dueDate&&r.dueDate>TODAY).length;
+
+  // Smart daily quote — chosen at midnight, based on day-of-year seed + live stats
+  const smartQuote=(()=>{
+    const allDone=openTaskCount===0&&openReminderCount===0;
+    const hasOverdue=overdueCount>0;
+    const bigOverdue=overdueCount>3;
+    const quietDay=openTaskCount===0&&openReminderCount>0;
+    const busy=openTaskCount>=5;
+    const day=new Date().getDate();
+    if(allDone) return["🎉 Nothing on the plate today. You're on top of it — good tradie.","✅ All clear. Clean slate. Make today count.","👊 Zero open. Rare. Enjoy it."][day%3];
+    if(bigOverdue) return[`⚠️ ${overdueCount} overdue. Clear those first — everything else can wait.`,`🔴 ${overdueCount} things past due. Time to catch up.`][day%2];
+    if(hasOverdue) return[`⚠️ ${overdueCount} overdue item${overdueCount>1?"s":""} — don't let them slip further.`,"🔴 Something's overdue. Sort it before it becomes a problem."][day%2];
+    if(busy) return[`${openTaskCount} tasks open. Break it down — one job at a time.`,"Big list today. Voice capture anything new, keep the list moving."][day%2];
+    if(quietDay) return["Tasks clear. Check your reminders before the day runs away.","No tasks today — good time to follow up on open reminders."][day%2];
+    if(pendingCount>0) return[`${pendingCount} pending job${pendingCount>1?"s":""} waiting on you. Don't leave clients hanging.`][0];
+    return["Say it once. Done. Not forgotten.","The van's packed. Is your head?","Quick capture now. Deal with it later.","Every task written is money not left on the table.","Good tradies don't forget. They write it down."][day%5];
+  })();
   const openTasks=tasks.filter(t=>!t.done).sort((a,b)=>{ if(!a.dueDate&&!b.dueDate)return 0; if(!a.dueDate)return 1; if(!b.dueDate)return -1; return a.dueDate<b.dueDate?-1:1; });
   const done12=tasks.filter(t=>t.done).length;
   const [selTask,setSelTask]=useState(null);
@@ -1200,25 +1409,17 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
 
         {/* LEFT */}
         <div>
-          <div className="card mb-14">
-            <div style={{padding:"12px 14px 0"}}><div className="sh" style={{marginBottom:0}}><span className="st">My Day</span><span style={{fontSize:11.5,color:"var(--text3)",display:"flex",alignItems:"center",gap:4}}><Ic n="clock" s={12}/>{new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</span></div></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,padding:"10px 14px 14px"}} className="mdgrid">
-              <div className="mds" style={{borderLeft:"3px solid var(--red)"}}>
-                <div className="mds-label" style={{color:"var(--red)"}}>⚠ Overdue</div>
-                <div className="mds-num" style={{color:"var(--red)"}}>{overdue}</div>
-              </div>
-              <div className="mds" style={{borderLeft:"3px solid var(--amber)"}}>
-                <div className="mds-label" style={{color:"var(--amber)"}}>⏰ Today</div>
-                <div className="mds-num" style={{color:"var(--amber)"}}>{dueToday}</div>
-              </div>
-              <div className="mds" style={{borderLeft:"3px solid var(--teal)"}}>
-                <div className="mds-label" style={{color:"var(--teal)"}}>📅 Upcoming</div>
-                <div className="mds-num" style={{color:"var(--teal)"}}>{upcoming}</div>
-              </div>
+          <div className="card mb-14" style={{padding:"11px 14px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5}}>My Day</span>
+              <span style={{fontSize:11.5,color:"var(--text3)",display:"flex",alignItems:"center",gap:4}}><Ic n="clock" s={11}/>{new Date().toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"})}</span>
             </div>
-            <div style={{padding:"0 14px 14px",borderTop:"1px solid var(--border)",paddingTop:10}}>
-              <div className="hint"><span>💡</span><span style={{fontStyle:"italic"}}>{DAILY_QUOTE}</span></div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <span style={{fontSize:12,background:"var(--green)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{openTaskCount} tasks</span>
+              <span style={{fontSize:12,background:"var(--amber)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{openReminderCount} reminders</span>
+              {pendingCount>0&&<span style={{fontSize:12,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"3px 10px",fontWeight:600}}>{pendingCount} pending</span>}
             </div>
+            <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic",lineHeight:1.5}}>{smartQuote}</div>
           </div>
 
           <div style={{marginBottom:12,border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
@@ -1278,7 +1479,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                             <div className="t-title">{t.title}</div>
                             <div className="t-meta">
                               <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
-                              {t.dueDate&&<span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":t.dueDate}</span>}
+                              {t.dueDate&&<span style={{fontSize:11,color:t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY?"Overdue":fmtDate(t.dueDate)}</span>}
                             </div>
                           </div>
                           <div className="t-right"><PBadge p={t.priority}/></div>
@@ -1346,7 +1547,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                           <div className="rem-text" style={{fontSize:12.5}}>{(r.title||r.text).slice(0,65)}{(r.title||r.text).length>65?"…":""}</div>
                           <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
                             {rJob&&<span className="tag"><Ic n="link" s={10}/>{rJob.address||rJob.name}</span>}
-                            {r.dueDate&&<div className="rem-date" style={{fontSize:11,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":r.dueDate}</div>}
+                            {r.dueDate&&<div className="rem-date" style={{fontSize:11,color:r.dueDate<TODAY?"var(--red)":r.dueDate===TODAY?"var(--amber)":"var(--text3)"}}>{r.dueDate===TODAY?"Today":r.dueDate<TODAY?"Overdue":fmtDate(r.dueDate)}</div>}
                           </div>
                         </div>
                         <CopyBtn text={r.title||r.text} style={{flexShrink:0}}/>
@@ -1452,7 +1653,7 @@ const TaskDetailModal = ({task, jobs, onClose, onSave, onComplete, onReopen, onO
           <span style={{background:priorityColor[f.priority]+"18",color:priorityColor[f.priority],borderRadius:7,padding:"4px 10px",fontSize:12,fontWeight:700}}>{f.priority} — {priorityLabel[f.priority]}</span>
           <span style={{background:"var(--bg)",borderRadius:7,padding:"4px 10px",fontSize:12,color:"var(--text2)"}}>👤 {f.assignedTo||"Me"}</span>
           {f.dueDate&&<span style={{background:"var(--bg)",borderRadius:7,padding:"4px 10px",fontSize:12,color:!task.done&&f.dueDate<TODAY?"var(--red)":"var(--text2)",fontWeight:f.dueDate<=TODAY?600:400}}>
-            <Ic n="clock" s={11}/> {f.dueDate===TODAY?"Due Today":f.dueDate<TODAY&&!task.done?"Overdue":f.dueDate}
+            <Ic n="clock" s={11}/> {f.dueDate===TODAY?"Due Today":f.dueDate<TODAY&&!task.done?"Overdue":fmtDate(f.dueDate)}
           </span>}
         </div>
         {/* Job link — tappable to open job */}
@@ -1541,7 +1742,7 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
                   <div className="t-meta">
                     {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
                     <span className="assign-chip">👤 {t.assignedTo||"Me"}</span>
-                    {t.dueDate&&<span style={{fontSize:11,color:!t.done&&t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY&&!t.done?"Overdue":t.dueDate}</span>}
+                    {t.dueDate&&<span style={{fontSize:11,color:!t.done&&t.dueDate<=TODAY?"var(--red)":"var(--text3)",display:"flex",alignItems:"center",gap:2}}><Ic n="clock" s={10}/>{t.dueDate===TODAY?"Today":t.dueDate<TODAY&&!t.done?"Overdue":fmtDate(t.dueDate)}</span>}
                   </div>
                 </div>
                 <div className="t-right"><PBadge p={t.priority}/></div>
@@ -1612,7 +1813,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
           <div className="rem-text">{r.title||r.text}</div>
           {r.notes&&<div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{r.notes}</div>}
           <div className="rem-date flex gap-8" style={{marginTop:4}}>
-            {r.dueDate&&<span style={{color:urgency==="overdue"?"var(--red)":urgency==="today"?"var(--amber)":"var(--text3)",display:"flex",alignItems:"center",gap:3}}><Ic n="clock" s={10}/>{urgency==="overdue"?"Overdue":urgency==="today"?"Today":r.dueDate}{r.dueTime?" at "+r.dueTime:""}</span>}
+            {r.dueDate&&<span style={{color:urgency==="overdue"?"var(--red)":urgency==="today"?"var(--amber)":"var(--text3)",display:"flex",alignItems:"center",gap:3}}><Ic n="clock" s={10}/>{urgency==="overdue"?"Overdue":urgency==="today"?"Today":fmtDate(r.dueDate)}{r.dueTime?" at "+r.dueTime:""}</span>}
             {job&&<span className="tag"><Ic n="link" s={10}/>{job.address||job.name}</span>}
             {!r.dueDate&&<span style={{color:"var(--text3)"}}>No due date</span>}
           </div>
@@ -1634,14 +1835,13 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
       <div className="flex ai-c jb mb-16">
         <div><h1 style={{fontSize:20,fontWeight:700}}>Reminders</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>Time-based · {open.length} active · {done.length} done</p></div>
         <div className="flex gap-8">
-          <button className="btn btn-ghost btn-sm" onClick={onAddNote}><Ic n="mic" s={13}/> Quick Capture</button>
           <button className="btn btn-blue" onClick={()=>setShowNew(true)}><Ic n="plus" s={15}/> Add Reminder</button>
         </div>
       </div>
 
       <div style={{background:"var(--amber-bg)",border:"1px solid #FDE68A",borderRadius:10,padding:"11px 14px",marginBottom:16,fontSize:13,color:"#78350F",display:"flex",gap:10}}>
         <span style={{fontSize:15}}>🔔</span>
-        <span><strong>Reminders</strong> are time-based nudges — work or personal. They can exist without a job, and can be promoted to a proper Task any time. Use <strong>Quick Capture</strong> to dump a thought without structure.</span>
+        <span><strong>Reminders</strong> are time-based nudges — work or personal. They can exist without a job, and can be promoted to a proper Task any time. Use the <strong>mic button</strong> to dump a thought without structure.</span>
       </div>
 
       {overdue.length>0&&<div className="card mb-16" style={{padding:0}}>
@@ -1725,22 +1925,27 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
 };
 
 // ─── JOBS LIST ────────────────────────────────────────────────────────────────
-const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
+const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptIntake}) => {
   const [search,setSearch]=useState("");
   const [filter,setFilter]=useState("all");
   const [reviewIntake,setReviewIntake]=useState(null);
+  const [showScanner,setShowScanner]=useState(false);
   const filtered=jobs.filter(j=>{
-    const mf=filter==="all"||j.status===filter;
+    const mf=filter==="all"||filter==="prospects"?filter==="prospects"?j.is_future_prospect:true:j.status===filter;
     const ms=!search||j.name.toLowerCase().includes(search.toLowerCase())||j.client.toLowerCase().includes(search.toLowerCase())||j.address.toLowerCase().includes(search.toLowerCase());
     return mf&&ms;
   });
   const statusColor={active:"var(--blue)",upcoming:"var(--teal)",completed:"var(--green)"};
   return (
     <div className="page">
-      <div className="flex ai-c jb mb-20">
+      <div className="flex ai-c jb mb-12">
         <div><h1 style={{fontSize:20,fontWeight:700}}>Jobs</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>{jobs.length} jobs</p></div>
-        <button className="btn btn-teal" onClick={onNew}><Ic n="plus" s={15}/> Create Job</button>
+        <div className="flex gap-8">
+          <button className="btn btn-ghost btn-sm" onClick={()=>setShowScanner(true)} style={{fontSize:12}}>📋 Scan Work Order</button>
+          <button className="btn btn-teal" onClick={onNew}><Ic n="plus" s={15}/> Create Job</button>
+        </div>
       </div>
+      {showScanner&&<WorkOrderScanner onClose={()=>setShowScanner(false)} onJobPrefill={(prefill)=>{setShowScanner(false);onScanWorkOrder(prefill);}}/>}
 
       {/* Pending intake jobs — shown at top when present */}
       {pendingIntake&&pendingIntake.length>0&&<div className="card mb-16" style={{padding:0}}>
@@ -1764,7 +1969,7 @@ const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
 
       <div className="flex ai-c gap-12 mb-16" style={{flexWrap:"wrap"}}>
         <div className="search-wrap"><Ic n="search" s={15}/><input className="search-input" placeholder="Search by name, client, address…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
-        <div className="tabs" style={{marginBottom:0}}>{["all","active","upcoming","completed"].map(f=><button key={f} className={`tab${filter===f?" on":""}`} onClick={()=>setFilter(f)}>{f.charAt(0).toUpperCase()+f.slice(1)}</button>)}</div>
+        <div className="tabs" style={{marginBottom:0}}>{[["all","All"],["active","Active"],["upcoming","Upcoming"],["completed","Completed"],["prospects","🟣 Prospects"]].map(([v,l])=><button key={v} className={`tab${filter===v?" on":""}`} onClick={()=>setFilter(v)}>{l}</button>)}</div>
       </div>
       <div className="card" style={{padding:0}}>
         {filtered.length===0?<div className="em"><Ic n="jobs" s={32} col="var(--text3)"/><p style={{marginTop:8}}>No jobs found</p></div>
@@ -1773,7 +1978,7 @@ const JobsList = ({jobs,onSelect,onNew,pendingIntake,onAcceptIntake}) => {
             <div style={{width:5,alignSelf:"stretch",borderRadius:"4px 0 0 4px",background:statusColor[j.status]||"var(--border)",flexShrink:0,margin:"-12px 0 -12px -16px"}}/>
             <div className="pc-av" style={{width:40,height:40,fontSize:13,marginLeft:4}}>{ini(j.client)}</div>
             <div className="li-main">
-              <div className="li-title">{j.address||j.name}</div>
+              <div className="li-title">{j.address||j.name}{j.is_future_prospect&&<span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#7C3AED",marginLeft:6,verticalAlign:"middle"}}/>}</div>
               <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client}</div>
               <div style={{marginTop:6}}><JobTags job={j}/>{j.status==="completed"&&(!j.certUploaded||!j.invoiceUploaded)&&<span style={{marginLeft:6,fontSize:11,color:"var(--amber)"}}>⚠️</span>}</div>
             </div>
@@ -1811,9 +2016,14 @@ function b64toBlob(src){
   const bytes=Array.from(bin).map(function(c){return c.charCodeAt(0);});
   return new Blob([new Uint8Array(bytes)],{type:mime});
 }
-const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
+const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
   const [showAddTask,setShowAddTask]=useState(false);
   const [showUF,setShowUF]=useState(false);
+  const [showPlans,setShowPlans]=useState(false);
+  const planRef=useRef(null);
+  const [showProspect,setShowProspect]=useState(false);
+  const [showDupe,setShowDupe]=useState(false);
+  const [dupeForm,setDupeForm]=useState({});
   const [ufText,setUfText]=useState("");
   const [tf,setTf]=useState({title:"",priority:"P2",assignedTo:"Me",dueDate:"",notes:""});
   const [editJob,setEditJob]=useState(false);
@@ -1934,6 +2144,18 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
   };
   const addUF=()=>{if(!ufText.trim())return;upd({unfinished:[...job.unfinished,{id:`UF${uid()}`,text:ufText,done:false}]});setUfText("");setShowUF(false)};
 
+  const handlePlanUpload=e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const isImage=file.type.startsWith("image/");
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const plan={id:`PL${uid()}`,name:file.name,src:ev.target.result,isImage,date:TODAY};
+      upd({plans:[...(job.plans||[]),plan]});
+    };
+    reader.readAsDataURL(file);
+    e.target.value="";
+  };
+
   // ── Diary state ──
   const [showNote,setShowNote]=useState(false);
   const [noteText,setNoteText]=useState("");
@@ -2025,6 +2247,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
         </div>
         <div className="flex gap-8 ai-c">
           <JobTags job={job}/>
+          <button style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,border:"1px solid var(--border)",background:"#fff",fontSize:12,fontWeight:600,color:"var(--text2)",cursor:"pointer",flexShrink:0}} onClick={()=>{setDupeForm({address:"",client:job.client||"",builder:job.builder||"",phone:job.phone||"",email:job.email||"",scope:job.scope||"",value:job.value||"",date:""});setShowDupe(true);}}>⧉ Duplicate</button>
           {job.phone&&<a href={`tel:${job.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,background:"var(--teal)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",flexShrink:0}}>📞 Call</a>}
         </div>
       </div>
@@ -2061,7 +2284,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
                   <button className="btn btn-blue btn-sm w-full" onClick={saveJobEdit}>Save Changes</button>
                 </div>
               : <div style={{padding:"4px 16px 12px"}}>
-                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date?fmtDate(job.date):null],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&&<div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
                 </div>
             }
           </div>
@@ -2106,7 +2329,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
                 <div key={n.id} style={{borderBottom:"1px solid var(--border)",padding:"12px 16px",cursor:"pointer"}} onClick={()=>openEditEntry(n)}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4}}>{n.date} · {n.time}</span>
+                      <span style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4}}>{fmtDate(n.date)} · {n.time}</span>
                       {n.via==="voice"&&<span style={{fontSize:10,color:"var(--blue)",fontWeight:600,background:"var(--blue-l)",borderRadius:4,padding:"1px 5px"}}>🎙 voice</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:6}} onClick={e=>e.stopPropagation()}>
@@ -2144,7 +2367,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
                 </div>
               ))}
             </div>}
-            <input ref={notePhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleNotePhoto}/>
+            <input ref={notePhotoRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleNotePhoto}/>
             <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>notePhotoRef.current?.click()}><Ic n="image" s={13}/> Attach Photo</button>
           </Mod>}
 
@@ -2160,7 +2383,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
                 </div>
               ))}
             </div>}
-            <input ref={editPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={handleEditPhoto}/>
+            <input ref={editPhotoRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleEditPhoto}/>
             <button className="btn btn-ghost btn-sm" style={{marginTop:8}} onClick={()=>editPhotoRef.current?.click()}><Ic n="image" s={13}/> Add Photo</button>
           </Mod>}
         </div>
@@ -2208,7 +2431,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
               </div>
             ))}
             {/* Full view modal for cert/invoice */}
-            {viewDoc&&<Mod title={viewDoc.type==="cert"?"Certificate":viewDoc.type==="invoice"?"Invoice":"Photo"} onClose={()=>setViewDoc(null)}
+            {viewDoc&&<Mod title={viewDoc.type==="cert"?"Certificate":viewDoc.type==="invoice"?"Invoice":viewDoc.type==="plan"?"Plan / Order":"Photo"} onClose={()=>setViewDoc(null)}
               footer={<>
                 <button className="btn btn-ghost" onClick={()=>setViewDoc(null)}>← Back</button>
                 <button className="btn btn-ghost" onClick={()=>shareFile(viewDoc.src,viewDoc.name||"file")}><Ic n="download" s={13}/> Save</button>
@@ -2349,10 +2572,86 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
               </div>
             ))}
           </div>
+
+          {/* Plans & Orders */}
+          <div className="section-box mt-16">
+            <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowPlans(p=>!p)}>
+              <span className="st">Plans & Orders {(job.plans||[]).length>0&&<span style={{fontSize:11,fontWeight:700,background:"var(--navy)",color:"#fff",borderRadius:8,padding:"1px 7px",marginLeft:6}}>{(job.plans||[]).length}</span>}</span>
+              <div className="flex gap-8" onClick={e=>e.stopPropagation()}>
+                {showPlans&&<>
+                  <input ref={planRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handlePlanUpload}/>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>planRef.current?.click()}><Ic n="upload" s={12}/> Upload</button>
+                </>}
+                <Ic n={showPlans?"chevL":"chevR"} s={14} col="var(--text3)"/>
+              </div>
+            </div>
+            {showPlans&&<div style={{padding:"12px 16px"}}>
+              {(job.plans||[]).length===0
+                ?<p style={{fontSize:13,color:"var(--text3)",marginBottom:12}}>No plans or orders yet — tap Upload to add.</p>
+                :<div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:12}}>
+                  {(job.plans||[]).map(pl=>(
+                    <div key={pl.id} style={{cursor:"pointer"}} onClick={()=>setViewDoc({...pl,type:"plan"})}>
+                      {pl.isImage
+                        ?<img src={pl.src} alt={pl.name} style={{width:72,height:72,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                        :<div style={{width:72,height:72,borderRadius:8,border:"1px solid var(--border)",background:"var(--bg)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
+                          <Ic n="upload" s={22} col="var(--navy)"/>
+                          <span style={{fontSize:9,color:"var(--text3)",textAlign:"center",padding:"0 4px",lineHeight:1.2}}>{pl.name.slice(0,12)}</span>
+                        </div>}
+                    </div>
+                  ))}
+                </div>}
+              <div style={{background:"var(--blue-l)",borderRadius:8,padding:"9px 12px",fontSize:12,color:"var(--navy)",lineHeight:1.5}}>
+                💡 Save to camera roll or Files, then attach to email to share with your builder.
+              </div>
+            </div>}
+          </div>
+
+          {/* Future Prospect */}
+          <div className="section-box mt-16" style={{borderTop:"1px solid var(--border)"}}>
+            <div className="section-box-head" style={{cursor:"pointer"}} onClick={()=>setShowProspect(p=>!p)}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {job.is_future_prospect&&<div style={{width:8,height:8,borderRadius:"50%",background:"#7C3AED",flexShrink:0}}/>}
+                <span style={{fontSize:12.5,fontWeight:600,color:"var(--text3)"}}>Future Prospect</span>
+              </div>
+              <Ic n={showProspect?"chevL":"chevR"} s={13} col="var(--text3)"/>
+            </div>
+            {showProspect&&<div style={{padding:"12px 16px"}}>
+              <textarea className="fta w-full" style={{minHeight:60,fontSize:13}} placeholder="Note a potential extra job or opportunity…" value={job.prospect_note||""} onChange={e=>upd({prospect_note:e.target.value})}/>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:10,cursor:"pointer"}} onClick={()=>upd({is_future_prospect:!job.is_future_prospect})}>
+                <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${job.is_future_prospect?"#7C3AED":"var(--border2)"}`,background:job.is_future_prospect?"#7C3AED":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  {job.is_future_prospect&&<Ic n="check" s={10} col="#fff"/>}
+                </div>
+                <span style={{fontSize:13,color:"var(--text2)"}}>Mark as future opportunity</span>
+              </div>
+            </div>}
+          </div>
+          </div>
         </div>
       </div>
 
-      {showAddTask&&<Mod title="Add Task" onClose={()=>setShowAddTask(false)}
+      {showDupe&&<Mod title="Duplicate Job" onClose={()=>setShowDupe(false)}
+        footer={<>
+          <button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button>
+          <button className="btn btn-teal" onClick={()=>{
+            const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
+            const scopeItems=(dupeForm.scope||"").split(/\n+/).filter(s=>s.trim().length>2).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
+            const nj={id:`J${uid()}`,ref,name:dupeForm.address||dupeForm.client||"New Job",client:dupeForm.client,builder:dupeForm.builder,address:dupeForm.address,phone:dupeForm.phone,email:dupeForm.email,scope:dupeForm.scope,notes:"Duplicated from "+job.ref,status:"upcoming",value:Number(dupeForm.value)||0,date:dupeForm.date,type:job.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
+            setJobs(p=>[nj,...p]);setShowDupe(false);onBack();
+          }}>Create Duplicate</button>
+        </>}>
+        <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12}}>All fields pre-filled from <strong>{job.address||job.name}</strong>. Edit what's different — typically just the address.</p>
+        <div className="fg"><label className="fl">Address *</label><input className="fi" placeholder="New site address" value={dupeForm.address||""} onChange={e=>setDupeForm(p=>({...p,address:e.target.value}))} autoFocus/></div>
+        <div className="fr">
+          <div className="fg"><label className="fl">Customer</label><input className="fi" value={dupeForm.client||""} onChange={e=>setDupeForm(p=>({...p,client:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Builder</label><input className="fi" value={dupeForm.builder||""} onChange={e=>setDupeForm(p=>({...p,builder:e.target.value}))}/></div>
+        </div>
+        <div className="fr">
+          <div className="fg"><label className="fl">Phone</label><input className="fi" value={dupeForm.phone||""} onChange={e=>setDupeForm(p=>({...p,phone:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={dupeForm.date||""} onChange={e=>setDupeForm(p=>({...p,date:e.target.value}))}/></div>
+        </div>
+        <div className="fg"><label className="fl">Value AUD</label><input type="number" className="fi" value={dupeForm.value||""} onChange={e=>setDupeForm(p=>({...p,value:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Scope of Works</label><textarea className="fta" style={{minHeight:80}} value={dupeForm.scope||""} onChange={e=>setDupeForm(p=>({...p,scope:e.target.value}))}/></div>
+      </Mod>} onClose={()=>setShowAddTask(false)}
         footer={<><button className="btn btn-ghost" onClick={()=>setShowAddTask(false)}>Cancel</button><button className="btn btn-blue" onClick={addTask}>Add Task</button></>}>
         <div className="fg"><label className="fl">What needs doing?</label><input className="fi" value={tf.title} onChange={e=>setTf(f=>({...f,title:e.target.value}))} placeholder="e.g. Call Marcus re: cable order" autoFocus/></div>
         <JobSearchInput jobs={jobs} value={tf.jobId||""} onChange={(id)=>setTf(f=>({...f,jobId:id}))}/>
@@ -2369,13 +2668,14 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack}) => {
 
 // ─── CREATE JOB ───────────────────────────────────────────────────────────────
 const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
-  const [f,setF]=useState({name:prefill?.name||"",client:prefill?.name||"",address:prefill?.address||"",phone:prefill?.phone||"",email:prefill?.email||"",scope:prefill?.scope||"",notes:"",value:"",date:"",type:""});
+  const [f,setF]=useState({name:prefill?.name||"",client:prefill?.name||"",address:prefill?.address||"",phone:prefill?.phone||"",email:prefill?.email||"",scope:prefill?.scope||"",notes:"",value:"",date:"",type:"",builder:prefill?.builder||""});
+  const [showWOScanner,setShowWOScanner]=useState(false);
   const sub=()=>{
     if(!f.address.trim()&&!f.client.trim()&&!f.scope.trim())return;
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const name=f.address||f.client||"New Job";
-    const scopeItems=f.scope?f.scope.split(/[.!?]+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false})):[];
-    const nj={id:`J${uid()}`,ref,name,client:f.client,builder:f.builder||"",address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"upcoming",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,certNotes:"",invNotes:"",tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
+    const scopeItems=f.scope?f.scope.split(/\n+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false})):[];
+    const nj={id:`J${uid()}`,ref,name,client:f.client,builder:f.builder||"",address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"upcoming",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
     onCreated(nj);
   };
   return (
@@ -2385,6 +2685,14 @@ const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
         <div><h1 style={{fontSize:20,fontWeight:700}}>Create Job</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>All sections auto-created on save</p></div>
       </div>
       {prefill&&<div className="hint mb-16"><Ic n="alert" s={16}/><span>Pre-filled from client intake — review before saving.</span></div>}
+      {showWOScanner&&<WorkOrderScanner onClose={()=>setShowWOScanner(false)} onJobPrefill={p=>{setF(f=>({...f,...p}));setShowWOScanner(false);}}/>}
+      <button onClick={()=>setShowWOScanner(true)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:10,border:"none",background:"var(--teal)",cursor:"pointer",marginBottom:16,fontFamily:"'Inter',sans-serif"}}>
+        <span style={{fontSize:20}}>📋</span>
+        <div style={{textAlign:"left"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>Scan Work Order</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,.8)"}}>Paste email text or upload a photo — AI fills the form</div>
+        </div>
+      </button>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="twocol">
         <div className="card p-20">
           <div className="st mb-12">Job Info</div>
@@ -2530,13 +2838,17 @@ const AssetsPage = ({assets,setAssets}) => {
 };
 
 // ─── WORKERS ──────────────────────────────────────────────────────────────────
-const WorkersPage = ({workers,setWorkers,jobs}) => {
+const WorkersPage = ({workers,setWorkers}) => {
   const [showNew,setShowNew]=useState(false);
   const [form,setForm]=useState({name:"",role:"",notes:""});
   const [selW,setSelW]=useState(null);
-  const [hf,setHf]=useState({date:TODAY,hrs:"",jobId:""});
+  const [hf,setHf]=useState({date:TODAY,hrs:""});
   const add=()=>{if(!form.name.trim())return;setWorkers(p=>[{...form,id:`W${uid()}`,hours:[]},...p]);setForm({name:"",role:"",notes:""});setShowNew(false)};
-  const addHrs=()=>{if(!hf.hrs||!selW)return;setWorkers(p=>p.map(w=>w.id===selW.id?{...w,hours:[{date:hf.date,hrs:Number(hf.hrs),jobId:hf.jobId},...w.hours]}:w));setHf({date:TODAY,hrs:"",jobId:""});setSelW(null)};
+  const addHrs=()=>{if(!hf.hrs||!selW)return;setWorkers(p=>p.map(w=>w.id===selW.id?{...w,hours:[{date:hf.date,hrs:Number(hf.hrs)},...w.hours]}:w));setHf({date:TODAY,hrs:""});setSelW(null)};
+  const weekTotal=(hours)=>{
+    const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);
+    return hours.filter(h=>h.date>=weekAgo.toISOString().split("T")[0]).reduce((s,h)=>s+h.hrs,0);
+  };
   return (
     <div className="page">
       <div className="flex ai-c jb mb-20">
@@ -2546,22 +2858,31 @@ const WorkersPage = ({workers,setWorkers,jobs}) => {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="twocol">
         {workers.map(w=>{
           const total=w.hours.reduce((s,h)=>s+h.hrs,0);
+          const week=weekTotal(w.hours);
           return <div key={w.id} className="card p-20">
             <div className="flex ai-c gap-12 mb-12">
               <div className="av" style={{width:44,height:44,fontSize:16,borderRadius:12,flexShrink:0}}>{ini(w.name)}</div>
               <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{w.name}</div>{w.role&&<div style={{fontSize:12.5,color:"var(--text3)"}}>{w.role}</div>}</div>
-              <button className="btn btn-ghost btn-xs" onClick={()=>{setSelW(w);setHf({date:TODAY,hrs:"",jobId:""})}}>Log Hours</button>
+              <button className="btn btn-ghost btn-xs" onClick={()=>{setSelW(w);setHf({date:TODAY,hrs:""})}}>Log Hours</button>
             </div>
-            {w.notes&&<p style={{fontSize:13,color:"var(--text2)",lineHeight:1.5,marginBottom:12}}>{w.notes}</p>}
-            <div style={{fontSize:12,color:"var(--text3)",marginBottom:8,display:"flex",alignItems:"center",gap:5}}><Ic n="clock" s={12}/><strong style={{color:"var(--text)"}}>{total}h</strong> logged total</div>
-            {w.hours.slice(0,4).map((h,i)=>{const job=jobs.find(j=>j.id===h.jobId);return <div key={i} className="dr" style={{padding:"6px 0"}}><div className="dl">{h.date}</div><div className="dv" style={{fontSize:13}}>{h.hrs}h{job?` — ${job.name}`:""}</div></div>})}
+            <div style={{display:"flex",gap:12,marginBottom:10}}>
+              <div style={{flex:1,background:"var(--bg)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:"var(--navy)"}}>{week}h</div>
+                <div style={{fontSize:10,color:"var(--text3)"}}>THIS WEEK</div>
+              </div>
+              <div style={{flex:1,background:"var(--bg)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                <div style={{fontSize:18,fontWeight:700,color:"var(--text2)"}}>{total}h</div>
+                <div style={{fontSize:10,color:"var(--text3)"}}>ALL TIME</div>
+              </div>
+            </div>
+            {w.hours.slice(0,4).map((h,i)=><div key={i} className="dr" style={{padding:"5px 0"}}><div className="dl">{fmtDate(h.date)}</div><div className="dv" style={{fontSize:13}}>{h.hrs}h</div></div>)}
             {w.hours.length===0&&<p style={{fontSize:13,color:"var(--text3)"}}>No hours logged</p>}
           </div>;
         })}
       </div>
       {workers.length===0&&<div className="card em"><Ic n="workers" s={32} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No workers yet</p></div>}
       {showNew&&<Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}><div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice, VA" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div></Mod>}
-      {selW&&<Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div><JobSearchInput jobs={jobs} value={hf.jobId||""} onChange={(id)=>setHf(p=>({...p,jobId:id}))} label="Link to Job"/></Mod>}
+      {selW&&<Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div></Mod>}
     </div>
   );
 };
@@ -2626,13 +2947,18 @@ const AccountPage = ({logoUrl, setLogoUrl}) => {
             </div>
           </div>
           <div className="card p-20">
-            <div className="st mb-12">AI Voice Parsing — How it works</div>
+            <div className="st mb-12">Tips — Getting the Most Out of SoleTasker</div>
             <div className="info-box">
-              <p style={{marginBottom:8,fontWeight:600,color:"var(--text)"}}>Voice → Text → Task in 3 steps</p>
-              <p style={{marginBottom:6}}>① <strong>You record</strong> — your browser's built-in speech recognition converts your voice to text in real time (Chrome/Safari, no extra setup).</p>
-              <p style={{marginBottom:6}}>② <strong>AI reads it</strong> — Claude AI (Anthropic) reads the transcript and extracts: task title, priority, assigned person, and job link.</p>
-              <p style={{marginBottom:8}}>③ <strong>You confirm</strong> — you see the result and can edit before anything is saved. Nothing is created automatically.</p>
-              <p style={{color:"var(--teal2)",fontWeight:500,fontSize:12}}>Try saying: "Task for VA, Hargreaves job, chase quote sign-off, priority 2"</p>
+              <p style={{marginBottom:10,fontWeight:600,color:"var(--text)"}}>🎙 Voice Capture</p>
+              <p style={{marginBottom:6,fontSize:13}}>Speak naturally. The app understands context — mention a name, address, or priority and it picks it up.</p>
+              <p style={{marginBottom:6,fontSize:13}}>Try: <span style={{color:"var(--teal2)",fontWeight:500}}>"Remind me to call Marcus tomorrow about the loft socket"</span></p>
+              <p style={{marginBottom:6,fontSize:13}}>Try: <span style={{color:"var(--teal2)",fontWeight:500}}>"Task for Jake, order cable for Birchwood, urgent"</span></p>
+              <p style={{marginBottom:12,fontSize:13}}>Use <strong>Thought Dump</strong> to capture anything instantly — no form, no category needed.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>📋 Work Orders</p>
+              <p style={{marginBottom:6,fontSize:13}}>Got a builder's work order? Go to <strong>Jobs → Scan Work Order</strong>. Paste the email text or upload a photo — all job details fill in automatically.</p>
+              <p style={{marginBottom:12,fontSize:13}}>Screenshot PDF pages on iPhone: side button + volume up.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>📱 Install on your phone</p>
+              <p style={{fontSize:13}}>Open this site in Safari → Share → <strong>Add to Home Screen</strong>. Works like a native app — full screen, no browser bar.</p>
             </div>
           </div>
         </div>
@@ -2681,22 +3007,19 @@ const PPE_ITEMS = ["Hard hat","Safety glasses / goggles","High-visibility vest",
 const SWMSPage = ({jobs, logoUrl}) => {
   const todayStr = new Date().toLocaleDateString("en-AU",{day:"2-digit",month:"2-digit",year:"numeric"});
   const [f, setF] = useState({
-    companyName:"", jobAddress:"", customer:"", builder:"",
-    date:todayStr, scope:"", tradeType:"",
+    companyName:ACCOUNT.company||ACCOUNT.name||"", jobAddress:"", customer:"", builder:"",
+    date:todayStr, scope:"", tradeType:ACCOUNT.trade||"",
     hrcw:[], ppe:[], plant:"",
     selectedHazards:TRADE_HAZARDS.map(h=>h.id),
     additionalHazards:"",
     workers:["","","","","",""],
     reviewedBy:"", reviewDate:todayStr,
-    preparedBy:"",
+    preparedBy:ACCOUNT.name||"",
   });
-  const [pullJob,setPullJob]=useState("");
   const [generating,setGenerating]=useState(false);
 
-  const handlePullJob=jobId=>{
-    setPullJob(jobId);
-    const job=jobs.find(j=>j.id===jobId);
-    if(job) setF(p=>({...p,jobAddress:job.address||"",customer:job.client||"",builder:job.builder||"",scope:job.scope||""}));
+  const handlePullJob=(jobId,job)=>{
+    if(job) setF(p=>({...p,jobAddress:job.address||"",customer:job.client||"",builder:job.builder||""}));
   };
   const toggleHazard=id=>setF(p=>({...p,selectedHazards:p.selectedHazards.includes(id)?p.selectedHazards.filter(h=>h!==id):[...p.selectedHazards,id]}));
   const toggleHRCW=item=>setF(p=>({...p,hrcw:p.hrcw.includes(item)?p.hrcw.filter(h=>h!==item):[...p.hrcw,item]}));
@@ -2752,13 +3075,12 @@ const SWMSPage = ({jobs, logoUrl}) => {
 
     y=75;
     // Job Details box
-    rect(ml,y,cw,100,"#f8f9fa","#ddd");
+    rect(ml,y,cw,80,"#f8f9fa","#ddd");
     line("JOB DETAILS",ml+8,y+14,10,"bold","#0F2B3D");
     line(`Site Address: ${f.jobAddress||"—"}`,ml+8,y+30,11);
     line(`Customer: ${f.customer||"—"}`,ml+8,y+46,11);
     line(`Builder / Principal Contractor: ${f.builder||"—"}`,ml+8,y+62,11);
-    y=wrap(`Scope of Work: ${f.scope||"—"}`,ml+8,y+78,cw-20,11);
-    y+=20;
+    y+=88;
 
     // HRCW
     if(f.hrcw.length>0){
@@ -2863,7 +3185,7 @@ const SWMSPage = ({jobs, logoUrl}) => {
   };
 
   const Tick=({checked,onToggle})=>(
-    <div onClick={onToggle} style={{width:20,height:20,borderRadius:4,border:`2px solid ${checked?"var(--teal)":"var(--border2)"}`,background:checked?"var(--teal)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
+    <div onClick={e=>{e.stopPropagation();onToggle();}} style={{width:20,height:20,borderRadius:4,border:`2px solid ${checked?"var(--teal)":"var(--border2)"}`,background:checked?"var(--teal)":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
       {checked&&<Ic n="check" s={11} col="#fff"/>}
     </div>
   );
@@ -2883,10 +3205,7 @@ const SWMSPage = ({jobs, logoUrl}) => {
       <div className="section-box mb-16">
         <div className="section-box-head"><span className="st">Pull from Job (optional)</span></div>
         <div style={{padding:"12px 14px"}}>
-          <select className="fs w-full" value={pullJob} onChange={e=>handlePullJob(e.target.value)}>
-            <option value="">— Select a job to pre-fill —</option>
-            {jobs.map(j=><option key={j.id} value={j.id}>{j.address||j.name} · {j.client}</option>)}
-          </select>
+          <JobSearchInput jobs={jobs} value="" onChange={(id,job)=>handlePullJob(id,job)} label="Search or select a job"/>
         </div>
       </div>
 
@@ -2904,7 +3223,6 @@ const SWMSPage = ({jobs, logoUrl}) => {
             <div className="fg"><label className="fl">Builder / Principal Contractor</label><input className="fi" value={f.builder} onChange={e=>setF(p=>({...p,builder:e.target.value}))}/></div>
           </div>
           <div className="fg"><label className="fl">Date</label><input className="fi" value={f.date} onChange={e=>setF(p=>({...p,date:e.target.value}))}/></div>
-          <div className="fg"><label className="fl">Scope of Work</label><textarea className="fta" style={{minHeight:70}} value={f.scope} onChange={e=>setF(p=>({...p,scope:e.target.value}))} placeholder="Describe the work being performed…"/></div>
         </div>
       </div>
 
@@ -3022,9 +3340,16 @@ export default function App() {
     if(page==="jobs"){
       if(mode==="new"){setJobsMode("create");setCreatePrefill(null);}
       else if(mode==="intake"){setJobsMode("create");setCreatePrefill(data);}
+      else if(mode==="workorder"){setJobsMode("create");setCreatePrefill(data);}
       else if(mode&&typeof mode==="string"&&mode!=="list"){setSelJobId(mode);setJobsMode("detail");}
       else{setJobsMode("list");setSelJobId(null);}
     }
+  };
+
+  const handleScanWorkOrder=(prefill)=>{
+    setCreatePrefill(prefill);
+    setJobsMode("create");
+    setNav("jobs");
   };
 
   const openCapture=(mode="voice",jobId=null)=>{setCaptureMode(mode);setCaptureJobId(jobId);setShowCapture(true)};
@@ -3044,8 +3369,8 @@ export default function App() {
   const handleCreateJob=(jobEdit,transcript)=>{
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const name=jobEdit.name||jobEdit.client||"New Job";
-    const scopeItems=(jobEdit.scope||"").split(/[.!?]+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
-    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",builder:jobEdit.builder||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"upcoming",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,certNotes:"",invNotes:"",tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[]};
+    const scopeItems=(jobEdit.scope||"").split(/\n+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
+    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",builder:jobEdit.builder||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"upcoming",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
     setJobs(p=>[nj,...p]);
     setSelJobId(nj.id);setJobsMode("detail");setNav("jobs");
   };
@@ -3078,12 +3403,12 @@ export default function App() {
     if(nav==="jobs"){
       if(jobsMode==="create") return <CreateJob jobs={jobs} onCreated={handleJobCreated} onCancel={()=>{setJobsMode("list");setCreatePrefill(null)}} prefill={createPrefill}/>;
       if(jobsMode==="detail"&&selJob) return <JobDetail job={selJob} jobs={jobs} tasks={tasks} setTasks={setTasks} setJobs={setJobs} onBack={()=>setJobsMode("list")}/>;
-      return <JobsList jobs={jobs} onSelect={id=>{setSelJobId(id);setJobsMode("detail")}} onNew={()=>{setJobsMode("create");setCreatePrefill(null)}} pendingIntake={pendingIntake} onAcceptIntake={(intake,action)=>{if(action==="accept"){setPendingIntake(p=>p.filter(x=>x.id!==intake.id));setCreatePrefill(intake);setJobsMode("create");}else{setPendingIntake(p=>p.filter(x=>x.id!==intake.id));}}}/>;
+      return <JobsList jobs={jobs} onSelect={id=>{setSelJobId(id);setJobsMode("detail")}} onNew={()=>{setJobsMode("create");setCreatePrefill(null)}} onScanWorkOrder={handleScanWorkOrder} pendingIntake={pendingIntake} onAcceptIntake={(intake,action)=>{if(action==="accept"){setPendingIntake(p=>p.filter(x=>x.id!==intake.id));setCreatePrefill(intake);setJobsMode("create");}else{setPendingIntake(p=>p.filter(x=>x.id!==intake.id));}}}/>;
     }
     if(nav==="tasks") return <TasksPage tasks={tasks} setTasks={setTasks} jobs={jobs} onNav={go}/>;
     if(nav==="reminders") return <RemindersPage reminders={reminders} setReminders={setReminders} tasks={tasks} setTasks={setTasks} jobs={jobs} onAddNote={()=>setShowAddTask(true)}/>;
     if(nav==="assets") return <AssetsPage assets={assets} setAssets={setAssets}/>;
-    if(nav==="workers") return <WorkersPage workers={workers} setWorkers={setWorkers} jobs={jobs}/>;
+    if(nav==="workers") return <WorkersPage workers={workers} setWorkers={setWorkers}/>;
     if(nav==="swms") return <SWMSPage jobs={jobs} logoUrl={logoUrl}/>;
     if(nav==="intake") return <IntakePage onClose={()=>setNav("dashboard")}/>;
     if(nav==="inbox") return <InboxPage inbox={inbox} setInbox={setInbox} tasks={tasks} setTasks={setTasks} reminders={reminders} setReminders={setReminders} jobs={jobs} onNav={go}/>;
@@ -3138,7 +3463,7 @@ export default function App() {
           <div className="topbar">
             <Logo/>
             <div className="topbar-div"/>
-            <span style={{fontSize:13,color:"var(--text2)",fontWeight:500}}>{new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}</span>
+            <span style={{fontSize:13,color:"var(--text2)",fontWeight:500}}>{new Date().toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"})}</span>
             <div className="topbar-div"/>
             {overdue>0&&<span style={{fontSize:13,fontWeight:600,color:"var(--red)",display:"flex",alignItems:"center",gap:5}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--red)",display:"inline-block"}}/>Overdue: {overdue}</span>}
             {dueToday>0&&<span style={{fontSize:13,fontWeight:500,color:"var(--amber)",display:"flex",alignItems:"center",gap:5,marginLeft:10}}><span style={{width:8,height:8,borderRadius:"50%",background:"var(--amber)",display:"inline-block"}}/>Due Today: {dueToday}</span>}
