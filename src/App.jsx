@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -2630,15 +2629,12 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
       </div>
 
       {showDupe&&<Mod title="Duplicate Job" onClose={()=>setShowDupe(false)}
-        footer={<>
-          <button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button>
-          <button className="btn btn-teal" onClick={()=>{
+        footer={<div className="flex gap-8"><button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button><button className="btn btn-teal" onClick={()=>{
             const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
             const scopeItems=(dupeForm.scope||"").split(/\n+/).filter(s=>s.trim().length>2).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
             const nj={id:`J${uid()}`,ref,name:dupeForm.address||dupeForm.client||"New Job",client:dupeForm.client,builder:dupeForm.builder,address:dupeForm.address,phone:dupeForm.phone,email:dupeForm.email,scope:dupeForm.scope,notes:"Duplicated from "+job.ref,status:"upcoming",value:Number(dupeForm.value)||0,date:dupeForm.date,type:job.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
             setJobs(p=>[nj,...p]);setShowDupe(false);onBack();
-          }}>Create Duplicate</button>
-        </>}>
+          }}>Create Duplicate</button></div>}>
         <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12}}>All fields pre-filled from <strong>{job.address||job.name}</strong>. Edit what's different — typically just the address.</p>
         <div className="fg"><label className="fl">Address *</label><input className="fi" placeholder="New site address" value={dupeForm.address||""} onChange={e=>setDupeForm(p=>({...p,address:e.target.value}))} autoFocus/></div>
         <div className="fr">
