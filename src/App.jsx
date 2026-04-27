@@ -746,6 +746,11 @@ const CaptureModal = ({
   const [step, setStep] = useState(mode==="voice" ? "idle" : "typing");
   const [text, setText] = useState("");
   const [editing, setEditing] = useState(false);
+
+  const handleClose = () => {
+    setParsedResult(null);
+    onClose();
+  };
   const [timer, setTimer] = useState(0);
   const [confirmType, setConfirmType] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -772,6 +777,7 @@ const CaptureModal = ({
 
   const startRec = () => {
     setStep("recording"); setTimer(0); setText(""); setEditing(false);
+    setParsedResult(null);
     tRef.current = setInterval(()=>setTimer(t=>{if(t>=MAX-1){stopRec();return t+1;}return t+1;}),1000);
     if(navigator.mediaDevices && window.MediaRecorder){
       navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
@@ -881,23 +887,19 @@ const CaptureModal = ({
     setJobDraft({name:"", client:"", address:"", scope:clean, notes:""});
     setReminderDraft({title:fallback, notes:"", dueDate:"", dueTime:"", linkedJobId:""});
     setStep("confirm");
-    setConfirming(true);
-    try {
-      const r = await analyseCapture(clean, jobs);
-      if(r) {
-        // Multi-task: if AI returns tasks array with 2+ items, store them
-        const aiTasks = Array.isArray(r.tasks) && r.tasks.length > 0 && typeof r.tasks[0]==="object" ? r.tasks : null;
-        if(aiTasks && aiTasks.length > 1) {
-          // Store multi-task result for doSave to use
-          setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:r.job_id||p.jobId}));
-        } else {
-          setTaskDraft(p=>({...p, priority:r.priority||p.priority, assignedTo:r.assigned_to||p.assignedTo, jobId:r.job_id||p.jobId}));
-        }
-        setJobDraft(p=>({...p, name:r.job_name||r.client_name||p.name, client:r.client_name||p.client, address:r.address||p.address, scope:r.notes||p.scope}));
-        setReminderDraft(p=>({...p, title:r.reminder_text||p.title, notes:r.notes||p.notes, dueDate:r.reminder_date||p.dueDate, linkedJobId:r.job_id||p.linkedJobId}));
+
+    // Use parsedResult already returned from /api/transcribe in stopRec
+    const r = parsedResult;
+    if(r) {
+      const aiTasks = Array.isArray(r.tasks) && r.tasks.length > 0 && typeof r.tasks[0]==="object" ? r.tasks : null;
+      if(aiTasks && aiTasks.length > 1) {
+        setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:r.job_id||p.jobId}));
+      } else {
+        setTaskDraft(p=>({...p, priority:r.priority||p.priority, assignedTo:r.assigned_to||p.assignedTo, jobId:r.job_id||p.jobId}));
       }
-    } catch(e){}
-    setConfirming(false);
+      setJobDraft(p=>({...p, name:r.job_name||r.client_name||p.name, client:r.client_name||p.client, address:r.address||p.address, scope:r.notes||p.scope}));
+      setReminderDraft(p=>({...p, title:r.reminder_text||p.title, notes:r.notes||p.notes, dueDate:r.reminder_date||p.dueDate, linkedJobId:r.job_id||p.linkedJobId}));
+    }
   };
 
   const doSave = () => {
@@ -946,9 +948,9 @@ const CaptureModal = ({
   const titleMap = {task:"Review Task",job:"Review Job"};
 
   return (
-    <Mod title={step==="confirm"?(titleMap[confirmType]||"Review"):"Voice Capture"} onClose={onClose} lg
+    <Mod title={step==="confirm"?(titleMap[confirmType]||"Review"):"Voice Capture"} onClose={handleClose} lg
       footer={
-        step==="idle"      ? <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        step==="idle"      ? <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
         : step==="recording" ? <button className="btn btn-red w-full" onClick={stopRec}><Ic n="stop" s={15}/> Stop Recording</button>
         : step==="confirm"  ? <>
             <button className="btn btn-ghost" onClick={()=>{setStep("choose");setConfirmType(null);}}>← Back</button>
@@ -956,7 +958,7 @@ const CaptureModal = ({
               {confirming?"Filling fields…":"Save"}
             </button>
           </>
-        : <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        : <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
       }>
 
       {/* IDLE — tap mic */}
