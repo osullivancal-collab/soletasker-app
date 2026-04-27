@@ -8,25 +8,27 @@ export const config = { api: { bodyParser: false } };
 const TEAM_MEMBERS = ["Me", "VA", "Jake Holden", "Matt Reeves"];
 
 // ─── STEP 1: Speech to Text ───────────────────────────────────────────────────
-async function transcribeAudio(buffer) {
-  console.log("[transcribeAudio] buffer size:", buffer.length);
+async function transcribeAudio(buffer, mimeType) {
+  const mime = mimeType || "audio/webm";
+  const filename = mime.includes("mp4") || mime.includes("m4a") ? "audio.m4a"
+    : mime.includes("wav") ? "audio.wav"
+    : "audio.webm";
+
+  console.log("[transcribeAudio] buffer size:", buffer.length, "mime:", mime, "filename:", filename);
   console.log("[transcribeAudio] OPENAI_API_KEY present:", !!process.env.OPENAI_API_KEY);
 
   if (!buffer.length) throw new Error("Empty audio buffer — nothing recorded");
 
   const formData = new FormData();
-  const audioBlob = new Blob([buffer], { type: "audio/webm" });
-  formData.append("file", audioBlob, "audio.webm");
+  const audioBlob = new Blob([buffer], { type: mime });
+  formData.append("file", audioBlob, filename);
   formData.append("model", "gpt-4o-mini-transcribe");
   formData.append("language", "en");
   formData.append("prompt", "Tradie voice note. Australian English. May include: P1, P2, priority one, priority two, address, job, task, reminder, SWMS, Part P, EIC, switchboard, invoice, certificate, builder, sparky, apprentice.");
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      // Do NOT set Content-Type — FormData sets it automatically with correct boundary
-    },
+    headers: { "Authorization": `Bearer ${process.env.OPENAI_API_KEY}` },
     body: formData,
   });
 
@@ -123,9 +125,10 @@ export default async function handler(req, res) {
     console.log("[/api/transcribe] Audio buffer collected, size:", buffer.length);
 
     const jobNames = req.query.jobs || "";
+    const mimeType = req.query.mime || "audio/webm";
 
     // Step 1: Transcribe audio
-    const transcript = await transcribeAudio(buffer);
+    const transcript = await transcribeAudio(buffer, mimeType);
 
     // Step 2: Parse transcript (non-fatal if fails)
     let parsed = null;
