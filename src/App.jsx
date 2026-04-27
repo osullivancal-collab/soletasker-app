@@ -750,6 +750,7 @@ const CaptureModal = ({
 
   const handleClose = () => {
     clearInterval(tTimerRef.current);
+    isStoppingRef.current=false;
     setParsedResult(null);
     setIsTranscribing(false);
     setTranscriptError(false);
@@ -787,14 +788,22 @@ const CaptureModal = ({
     setStep("recording"); setTimer(0); setText(""); setEditing(false);
     setParsedResult(null); setIsTranscribing(false);
     setTranscriptTimer(0); setTranscriptError(false);
+    isStoppingRef.current=false;
     tRef.current = setInterval(()=>setTimer(t=>{if(t>=MAX-1){stopRec();return t+1;}return t+1;}),1000);
     if(navigator.mediaDevices && window.MediaRecorder){
       navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
         audioChunksRef.current=[];
-        const mr=new MediaRecorder(stream);
+        // Detect best supported MIME type — webm for desktop, mp4 for iPhone
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+        const options = mimeType ? {mimeType} : {};
+        const mr = new MediaRecorder(stream, options);
         mr.ondataavailable=e=>{if(e.data.size>0)audioChunksRef.current.push(e.data);};
         mr.start();
-        mediaRecRef.current={recorder:mr,stream};
+        mediaRecRef.current={recorder:mr, stream, mimeType: mr.mimeType||mimeType||"audio/webm"};
       }).catch(()=>_startBrowserSTT());
     } else {
       _startBrowserSTT();
@@ -810,44 +819,60 @@ const CaptureModal = ({
     }
   };
 
+  const isStoppingRef = useRef(false);
+
   const stopRec=()=>{
+    if(isTranscribing) return;
+    if(isStoppingRef.current) return;
+    isStoppingRef.current=true;
     clearInterval(tRef.current);
     try{srRef.current?.stop();}catch(e){}
     const mrd=mediaRecRef.current;
     if(mrd){
       mrd.recorder.onstop=async()=>{
         mrd.stream.getTracks().forEach(t=>t.stop());
+        const detectedMime = mrd.mimeType || "audio/webm";
         mediaRecRef.current=null;
-        const blob=new Blob(audioChunksRef.current,{type:"audio/webm"});
+        const blob=new Blob(audioChunksRef.current,{type:detectedMime});
         audioChunksRef.current=[];
-        setStep("choose");
+        setStep("transcribing");
         setText("");
         setIsTranscribing(true);
         setTranscriptError(false);
         setTranscriptTimer(0);
         tTimerRef.current=setInterval(()=>setTranscriptTimer(t=>t+1),1000);
         try{
+          console.log("Sending audio — size:", blob.size, "type:", detectedMime);
           const jobNames=jobs.map(j=>`"${j.name||j.address}" (id:${j.id})`).join(",");
-          const res=await fetch(`/api/transcribe?jobs=${encodeURIComponent(jobNames)}`,{method:"POST",headers:{"Content-Type":"audio/webm"},body:blob});
+          const todayStr=new Date().toISOString().split("T")[0];
+          const res=await fetch(`/api/transcribe?jobs=${encodeURIComponent(jobNames)}&mime=${encodeURIComponent(detectedMime)}&today=${todayStr}`,{
+            method:"POST",
+            headers:{"Content-Type":detectedMime},
+            body:blob
+          });
+          if(!res.ok){throw new Error(`API error: ${res.status}`);}
           const data=await res.json();
           clearInterval(tTimerRef.current);
           const t=data.transcript||"";
-          if(!t){setTranscriptError(true);setIsTranscribing(false);return;}
+          if(!t){setTranscriptError(true);setIsTranscribing(false);isStoppingRef.current=false;return;}
           setText(t);
           if(data.parsed) setParsedResult(data.parsed);
+          setStep("choose");
         }catch(err){
           console.error("Transcribe error:",err);
           clearInterval(tTimerRef.current);
           setTranscriptError(true);
+          setStep("choose");
         }
         setIsTranscribing(false);
+        isStoppingRef.current=false;
       };
       mrd.recorder.stop();
     } else {
       setStep("choose");
+      isStoppingRef.current=false;
     }
   };
-
   // ── TRANSCRIPT FORMATTER ──────────────────────────────────────────────────
   // Converts spoken text into clean, usable formatted output
   const cleanTranscript = (raw) => {
@@ -916,9 +941,18 @@ const CaptureModal = ({
 
     const parsePriority = (t) => {
       const s = t.toLowerCase();
-      if(/priority\s*(3|three)|p3|\blow priority\b|\bwhenever\b/.test(s)) return "P3";
-      if(/priority\s*(2|two)|p2|\bmedium\b/.test(s)) return "P2";
-      if(/priority\s*(1|one)|p1|\burgent\b|\basap\b/.test(s)) return "P1";
+      // Check explicit number first — wins over all other words
+      if(/\bpriority\s*1\b|\bp1\b/.test(s)) return "P1";
+      if(/\bpriority\s*2\b|\bp2\b/.test(s)) return "P2";
+      if(/\bpriority\s*3\b|\bp3\b/.test(s)) return "P3";
+      // Word forms
+      if(/\bpriority\s*(one)\b/.test(s)) return "P1";
+      if(/\bpriority\s*(two)\b/.test(s)) return "P2";
+      if(/\bpriority\s*(three)\b/.test(s)) return "P3";
+      // Keyword fallbacks
+      if(/\burgent\b|\basap\b/.test(s)) return "P1";
+      if(/\bhigh\b/.test(s)) return "P2";
+      if(/\blow\b|\bwhenever\b/.test(s)) return "P3";
       return "P2";
     };
 
@@ -945,7 +979,7 @@ const CaptureModal = ({
       const hasExplicitPriority = /priority\s*[123one two three]|p[123]|urgent|asap/i.test(raw);
       const finalPriority = hasExplicitPriority ? inferredPriority : (r.priority||inferredPriority);
       const aiTitle = r.task_title ? cleanTitle(r.task_title) : titleClean;
-      const aiDue = r.reminder_date && r.reminder_date >= TODAY ? r.reminder_date : inferredDue||"";
+      const aiDue = inferredDue || (r.reminder_date && r.reminder_date >= TODAY ? r.reminder_date : "");
 
       if(aiTasks && aiTasks.length > 1) {
         setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:safeJobId}));
@@ -1022,14 +1056,17 @@ const CaptureModal = ({
   return (
     <Mod title={step==="confirm"?(titleMap[confirmType]||"Review"):"Voice Capture"} onClose={handleClose} lg
       footer={
-        step==="idle"      ? <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
-        : step==="recording" ? <button className="btn btn-red w-full" onClick={stopRec}><Ic n="stop" s={15}/> Stop Recording</button>
-        : step==="confirm"  ? <>
-            <button className="btn btn-ghost" onClick={()=>{setStep("choose");setConfirmType(null);}}>← Back</button>
-            <button className="btn btn-blue" onClick={doSave} disabled={confirming}>
-              {confirming?"Filling fields…":"Save"}
-            </button>
-          </>
+        step==="idle"
+          ? <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
+        : step==="recording"
+          ? <button className="btn btn-red w-full" onClick={stopRec}><Ic n="stop" s={15}/> Stop Recording</button>
+        : step==="transcribing"
+          ? null
+        : step==="confirm"
+          ? <><button className="btn btn-ghost" onClick={()=>{setStep("choose");setConfirmType(null);}}>← Back</button>
+              <button className="btn btn-blue" onClick={doSave} disabled={confirming}>{confirming?"Saving…":"Save"}</button></>
+        : isTranscribing
+          ? null
         : <button className="btn btn-ghost" onClick={handleClose}>Cancel</button>
       }>
 
@@ -1059,8 +1096,8 @@ const CaptureModal = ({
         }
       </div>}
 
-      {/* CHOOSE — transcript shown, then action buttons */}
-      {step==="choose"&& <div>
+      {/* CHOOSE — includes transcribing, error, and ready states */}
+      {(step==="choose"||step==="transcribing")&& <div>
 
         {/* LOADING STATE — while transcribing */}
         {isTranscribing
@@ -3521,7 +3558,10 @@ export default function App() {
     setNav("jobs");
   };
 
-  const openCapture=(mode="voice",jobId=null)=>{setCaptureMode(mode);setCaptureJobId(jobId);setShowCapture(true)};
+  const openCapture=(mode="voice",jobId=null)=>{
+    if(showCapture) return;
+    setCaptureMode(mode);setCaptureJobId(jobId);setShowCapture(true);
+  };
 
   // Unified save handlers from CaptureModal
   const handleSaveTask=(taskData)=>{
