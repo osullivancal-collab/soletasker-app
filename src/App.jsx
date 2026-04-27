@@ -5,6 +5,7 @@ const TODAY = new Date().toISOString().split("T")[0];
 const TEAM_MEMBERS = ["Me", "VA", "Jake Holden", "Matt Reeves"];
 // Format ISO date to Australian display format
 const fmtDate=(iso)=>{if(!iso)return"";const[y,m,d]=iso.split("-");const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return`${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;};
+const pColor=(p)=>p==="P1"?"var(--red)":p==="P2"?"var(--amber)":"var(--border2)";
 // mailto body builder — raw newlines, browser handles encoding
 const mb=(...lines)=>encodeURIComponent(lines.filter(l=>l!=null).join("\n\n").replace(/Regards,%0A/g,"Regards,\n"));
 
@@ -72,7 +73,7 @@ const PENDING_INTAKE = [
   { id:"PI001", name:"Tamara Nguyen", address:"23 Mayfield St, Kogarah", phone:"+61 400 123 456", email:"tamara@example.com", scope:"Install new power points in living room, kitchen, and garage.", submitted:"2026-04-06" },
 ];
 
-const ACCOUNT = { name:"Jason Miller", trade:"Electrician", company:"Miller Electrical Services", email:"jason@millerelectrical.co.uk", phone:"07711 234 567", regNo:"SELECT-2234", address:"Unit 4, Anvil Works, Northside", logoUrl:"" };
+const ACCOUNT = { name:"Jason Miller", trade:"Electrician", company:"Miller Electrical Services", email:"jason@millerelectrical.co.uk", phone:"07711 234 567", regNo:"SELECT-2234", address:"Unit 4, Anvil Works, Northside", logoUrl:"", reviewLink:"" };
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -123,6 +124,7 @@ button,input,select,textarea{font-family:'Inter',sans-serif}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 17px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;border:none;transition:all .14s;white-space:nowrap;font-family:'Inter',sans-serif}
 .btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:var(--blue2)}
 .btn-teal{background:var(--teal);color:#fff}.btn-teal:hover{background:var(--teal2)}
+.btn-amber{background:var(--amber);color:#fff}.btn-amber:hover{background:#d97706}
 .btn-ghost{background:transparent;color:var(--text2);border:1.5px solid var(--border)}.btn-ghost:hover{background:var(--bg);color:var(--text)}
 .btn-red{background:var(--red);color:#fff;border:none}.btn-red:hover{background:#DC2626}
 .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:var(--teal2)}
@@ -163,7 +165,7 @@ button,input,select,textarea{font-family:'Inter',sans-serif}
 .hcheck-wrap:hover .hcheck-tip{opacity:1}
 
 /* ── TASK ROWS ── */
-.task-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:background .12s}
+.task-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid #e0e0e0;transition:background .12s}
 .task-row:last-child{border-bottom:none}
 .task-row:hover{background:#FAFBFF}
 .task-row.done-row{opacity:.45}
@@ -174,7 +176,7 @@ button,input,select,textarea{font-family:'Inter',sans-serif}
 .t-right{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-top:1px}
 
 /* ── REMINDER ROWS (different visual from tasks) ── */
-.rem-row{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);background:#fff;transition:background .12s}
+.rem-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:#fff;transition:background .12s}
 .rem-row:last-child{border-bottom:none}
 .rem-row:hover{background:var(--amber-bg)}
 .rem-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px}
@@ -513,58 +515,16 @@ const JobTags = ({job}) => {
 // ─── AI FULL CAPTURE ANALYSIS ────────────────────────────────────────────────
 // Analyses a full thought dump (voice or text) and extracts structured intent
 const analyseCapture = async (text, jobs) => {
-  const jobNames = jobs.map(j=>`"${j.name}" (id:${j.id})`).join(", ");
-  const prompt = `You are an intelligent capture system for SoleTasker, a job management app for tradespeople.
-
-Analyse this thought dump and extract ALL useful structured information.
-
-Available jobs: ${jobNames || "none"}
-Available team members: ${TEAM_MEMBERS.join(", ")}
-
-Thought dump: "${text}"
-
-Return ONLY valid JSON. No markdown, no explanation:
-{
-  "intent": "one of: job | task | reminder | note",
-  "confidence": "high | medium | low",
-  "job_name": "extracted job name or null",
-  "job_id": "matching job id from available jobs or null",
-  "client_name": "extracted client name or null",
-  "address": "extracted address or null",
-  "tasks": [
-    {
-      "title": "concise task title",
-      "priority": "P1 or P2 or P3",
-      "assigned_to": "one of: ${TEAM_MEMBERS.join(", ")} or Me",
-      "due_date": "YYYY-MM-DD or null"
-    }
-  ],
-  "reminder_text": "extracted reminder text or null",
-  "reminder_date": "extracted date in YYYY-MM-DD format or null",
-  "notes": "any remaining context as a clean note or null",
-  "task_title": "if single task intent: concise task title or null",
-  "priority": "P1 or P2 or P3",
-  "assigned_to": "one of: ${TEAM_MEMBERS.join(", ")} or null",
-  "smart_suggestions": ["array of smart suggestions like: invoice, certificate, follow-up — empty if none"]
-}
-
-Intent guide:
-- job: contains client name, address, or job description
-- task: action to be done (order, call, book, send, submit, fix) — extract ALL tasks mentioned
-- reminder: contains time intent ("remind me", "follow up", dates, "don't forget", "tomorrow", "next week")
-- note: general info, no clear action or time intent
-
-Priority: P1=urgent/today, P2=this week, P3=low/when possible
-If multiple tasks are mentioned, populate the tasks array with each one separately.`;
-
+  // Parsing handled server-side — this is a fallback only if server parse failed
+  const jobNames = jobs.map(j=>`"${j.name||j.address}" (id:${j.id})`).join(", ");
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600, messages:[{role:"user",content:prompt}] })
+    const res = await fetch(`/api/parse?jobs=${encodeURIComponent(jobNames)}`, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain"},
+      body: text
     });
     const data = await res.json();
-    const raw = data.content?.map(b=>b.text||"").join("")||"";
-    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+    return data.parsed || null;
   } catch(e) {
     return {intent:"note",confidence:"low",task_title:text.slice(0,80),priority:"P2",assigned_to:"Me",job_id:null,job_name:null,tasks:[],reminder_text:null,reminder_date:null,notes:text,smart_suggestions:[]};
   }
@@ -650,41 +610,23 @@ const JobSearchInput = ({jobs=[], value, onChange, label="Link to Job (optional)
 // ─── AI WORK ORDER PARSER ─────────────────────────────────────────────────────
 // Parses a work order from either pasted text or a base64 image
 const analyseWorkOrder = async (input) => {
-  const prompt = `You are parsing a builder's work order for an Australian tradie using SoleTasker.
-
-Extract ALL job details from this work order. Return ONLY valid JSON, no markdown:
-{
-  "address": "full site address or null",
-  "client": "homeowner or client name or null",
-  "builder": "builder or builder company name or null",
-  "builder_contact": "builder contact name if different from builder or null",
-  "phone": "phone number or null",
-  "email": "email address or null",
-  "date_required": "date in YYYY-MM-DD format or null",
-  "scope": "full scope of works — every task mentioned, written as clear instructions",
-  "value": "dollar amount as number or null",
-  "notes": "any other relevant info, access instructions, special requirements or null"
-}
-
-Rules:
-- address is the SITE address where work is to be performed, not the builder's office
-- scope should capture everything — be thorough, this is what the tradie will work from
-- If multiple trades mentioned, include all scope items
-- Australian date formats: convert DD/MM/YYYY to YYYY-MM-DD`;
-
   try {
-    const content = input.type === "image"
-      ? [{type:"image",source:{type:"base64",media_type:input.mediaType,data:input.data}},{type:"text",text:prompt}]
-      : [{type:"text",text:`${prompt}\n\nWork order text:\n${input.text}`}];
-
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":process.env.REACT_APP_ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01"},
-      body: JSON.stringify({model:"claude-sonnet-4-20250514", max_tokens:800, messages:[{role:"user",content}]})
-    });
+    let res;
+    if(input.type === "image") {
+      res = await fetch("/api/workorder", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({type:"image", data:input.data, mediaType:input.mediaType})
+      });
+    } else {
+      res = await fetch("/api/workorder", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({type:"text", text:input.text})
+      });
+    }
     const data = await res.json();
-    const raw = data.content?.map(b=>b.text||"").join("")||"";
-    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+    return data.result || null;
   } catch(e) {
     return null;
   }
@@ -808,6 +750,7 @@ const CaptureModal = ({
   const [confirmType, setConfirmType] = useState(null);
   const [confirming, setConfirming] = useState(false);
   const [showWOScanner, setShowWOScanner] = useState(false);
+  const [parsedResult, setParsedResult] = useState(null);
   const [scopeRec, setScopeRec] = useState(false);
   const scopeSrRef = useRef(null);
   const startScopeVoice=(setter)=>{
@@ -823,21 +766,62 @@ const CaptureModal = ({
   const [reminderDraft, setReminderDraft] = useState({title:"",notes:"",dueDate:"",dueTime:"",linkedJobId:""});
   const tRef = useRef(null);
   const srRef = useRef(null);
+  const mediaRecRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const MAX = 120;
 
   const startRec = () => {
     setStep("recording"); setTimer(0); setText(""); setEditing(false);
     tRef.current = setInterval(()=>setTimer(t=>{if(t>=MAX-1){stopRec();return t+1;}return t+1;}),1000);
-    const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(SR){
-      const sr=new SR(); sr.continuous=true; sr.interimResults=true; sr.lang="en-AU";
-      sr.onresult=e=>{setText(Array.from(e.results).map(r=>r[0].transcript).join(" "))};
-      sr.start(); srRef.current=sr;
+    if(navigator.mediaDevices && window.MediaRecorder){
+      navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+        audioChunksRef.current=[];
+        const mr=new MediaRecorder(stream);
+        mr.ondataavailable=e=>{if(e.data.size>0)audioChunksRef.current.push(e.data);};
+        mr.start();
+        mediaRecRef.current={recorder:mr,stream};
+      }).catch(()=>_startBrowserSTT());
+    } else {
+      _startBrowserSTT();
     }
   };
-  const stopRec = () => {
-    clearInterval(tRef.current); try{srRef.current?.stop();}catch(e){}
-    setStep("choose");
+
+  const _startBrowserSTT=()=>{
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(SR){
+      const sr=new SR();sr.continuous=true;sr.interimResults=true;sr.lang="en-AU";
+      sr.onresult=e=>{setText(Array.from(e.results).map(r=>r[0].transcript).join(" "))};
+      sr.start();srRef.current=sr;
+    }
+  };
+
+  const stopRec=()=>{
+    clearInterval(tRef.current);
+    try{srRef.current?.stop();}catch(e){}
+    const mrd=mediaRecRef.current;
+    if(mrd){
+      mrd.recorder.onstop=async()=>{
+        mrd.stream.getTracks().forEach(t=>t.stop());
+        mediaRecRef.current=null;
+        const blob=new Blob(audioChunksRef.current,{type:"audio/webm"});
+        audioChunksRef.current=[];
+        setStep("choose");
+        setText("Transcribing…");
+        try{
+          const jobNames=jobs.map(j=>`"${j.name||j.address}" (id:${j.id})`).join(",");
+          const res=await fetch(`/api/transcribe?jobs=${encodeURIComponent(jobNames)}`,{method:"POST",headers:{"Content-Type":"audio/webm"},body:blob});
+          const data=await res.json();
+          setText(data.transcript||"");
+          if(data.parsed) setParsedResult(data.parsed);
+        }catch(err){
+          console.error("Transcribe error:",err);
+          setText("");
+        }
+      };
+      mrd.recorder.stop();
+    } else {
+      setStep("choose");
+    }
   };
 
   // ── TRANSCRIPT FORMATTER ──────────────────────────────────────────────────
@@ -1408,6 +1392,9 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
 
         {/* LEFT */}
         <div>
+          {overdueCount>0&& <div style={{background:"#fff1f0",border:"1px solid #ffccc7",borderRadius:10,padding:"8px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:"var(--red)",fontWeight:600}}>
+            ⚠ {overdueCount} overdue {overdueCount===1?"item":"items"} — check your tasks
+          </div>}
           <div className="card mb-14" style={{padding:"11px 14px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
               <span style={{fontSize:12,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5}}>My Day</span>
@@ -1421,9 +1408,9 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             <div style={{fontSize:12,color:"var(--text3)",fontStyle:"italic",lineHeight:1.5}}>{smartQuote}</div>
           </div>
 
-          <div style={{marginBottom:12,border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
+          <div style={{marginTop:12,marginBottom:12,border:"1.5px solid #b2dfdb",borderRadius:14,background:"#f0faf8",overflow:"hidden"}}>
             {/* Header — part of the container */}
-            <div onClick={()=>setTasksOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:tasksOpen?"1px solid var(--border)":"none",background:"#fff"}}>
+            <div onClick={()=>setTasksOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:tasksOpen?"1px solid #b2dfdb":"none",background:"#f0faf8"}}>
               <span className="st">Open Tasks {openTasks.length>0&& <span style={{fontSize:11,fontWeight:700,background:"var(--green)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{openTasks.length}</span>}</span>
               <div style={{display:"flex",alignItems:"center",gap:16}}>
                 <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{tasksOpen?"↑":"↓"}</span>
@@ -1448,14 +1435,14 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                   const {jobId, tasks:gTasks} = groupMap[key];
                   const job = jobs.find(j=>j.id===jobId);
                   const isGroup = gTasks.length > 1;
-                  const isCompressed = isGroup && compressedGroups[jobId] && gTasks.length > 1;
+                  const isCompressed = isGroup && compressedGroups[jobId];
                   if(isCompressed) {
                     return (
                       <div key={key} className="card" style={{padding:0,marginBottom:8}}>
                         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px"}}>
                           <div>
                             <div style={{fontWeight:700,fontSize:13,color:"var(--navy)"}}>{job?.address||job?.name||"Tasks"}</div>
-                            <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job?.client&& <span>{job.client} · </span>}{gTasks.length} tasks remaining</div>
+                            <div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{job?.client&& <span>{job.client} · </span>}{gTasks.length} tasks</div>
                           </div>
                           <button onClick={()=>toggleCompress(jobId)} style={{fontSize:11,color:"var(--text3)",fontWeight:600,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Expand ↓</button>
                         </div>
@@ -1473,7 +1460,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                       </div>}
                       {gTasks.map(t=>(
                         <div key={t.id} className="task-row" style={{cursor:"pointer"}} onClick={()=>setSelTask(t)}>
-                          <HoldCheck done={t.done} onComplete={()=>{complete(t.id);if(isGroup&&gTasks.filter(x=>!x.done).length<=2)setCompressedGroups(p=>({...p,[jobId]:false}));}} onUncomplete={()=>reopen(t.id)}/>
+                          <HoldCheck done={t.done} onComplete={()=>complete(t.id)} onUncomplete={()=>reopen(t.id)}/>
                           <div className="t-body">
                             <div className="t-title">{t.title}</div>
                             <div className="t-meta">
@@ -1489,22 +1476,28 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                 });
               })()
             }
-            {done12>0&& <div style={{fontSize:12,color:"var(--text3)",padding:"4px 0 8px",display:"flex",alignItems:"center",gap:6}}><Ic n="check" s={12} col="var(--green)"/>{done12} completed</div>}
             </div>}
           </div>
         </div>
 
         {/* RIGHT */}
         <div>
-          {pendingIntake.length>0&& <div className="card mb-12">
-            <div style={{padding:"11px 13px 0"}}><div className="sh"><span className="st" style={{color:"var(--amber)"}}>⏳ Pending ({pendingIntake.length})</span><button className="va" onClick={()=>onNav("jobs")}>All <Ic n="chevR" s={12}/></button></div></div>
-            <div style={{padding:"0 13px 10px"}}>{pendingIntake.map(p=>(
-              <div key={p.id} onClick={()=>setReviewIntakeDash(p)} style={{display:"flex",alignItems:"center",gap:9,padding:"8px 0",borderBottom:"1px solid var(--border)",cursor:"pointer"}}>
-                <div className="pc-av" style={{width:32,height:32,fontSize:12,flexShrink:0}}>{ini(p.name)}</div>
-                <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12.5}}>{p.name}</div><div style={{fontSize:11,color:"var(--text3)"}}>{p.address.split(",")[0]}</div></div>
-                <span style={{fontSize:11,color:"var(--amber)",fontWeight:700,border:"1.5px solid var(--amber)",borderRadius:6,padding:"3px 7px",flexShrink:0}}>Review →</span>
-              </div>
-            ))}</div>
+          {pendingIntake.length>0&& <div style={{marginBottom:12,border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid var(--border)",background:"var(--bg)"}}>
+              <span className="st" style={{color:"var(--navy)"}}>⏳ Pending ({pendingIntake.length})</span>
+              <button className="va" onClick={()=>onNav("jobs")}>All <Ic n="chevR" s={12}/></button>
+            </div>
+            <div style={{padding:"8px 10px"}}>
+              {pendingIntake.map(p=>(
+                <div key={p.id} className="card" style={{padding:0,marginBottom:8}} onClick={()=>setReviewIntakeDash(p)}>
+                  <div style={{display:"flex",alignItems:"center",gap:9,padding:"10px 13px",cursor:"pointer"}}>
+                    
+                    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:600,fontSize:12.5}}>{p.name}</div><div style={{fontSize:11,color:"var(--text3)"}}>{p.address.split(",")[0]}</div></div>
+                    <span style={{fontSize:11,color:"var(--amber)",fontWeight:700,border:"1.5px solid var(--amber)",borderRadius:6,padding:"3px 7px",flexShrink:0}}>Review →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>}
 
           {/* Inline review modal for pending intake from dashboard */}
@@ -1525,8 +1518,8 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
             </div>
           </Mod>}
 
-          <div className="mb-12" style={{border:"1.5px solid var(--border)",borderRadius:14,background:"#fff",overflow:"hidden"}}>
-            <div onClick={()=>setRemindersOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:remindersOpen?"1px solid var(--border)":"none",background:"#fff"}}>
+          <div className="mb-12" style={{border:"1.5px solid #ffe0b2",borderRadius:14,background:"#fffbf0",overflow:"hidden"}}>
+            <div onClick={()=>setRemindersOpen(p=>!p)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",cursor:"pointer",borderBottom:remindersOpen?"1px solid #ffe0b2":"none",background:"#fffbf0"}}>
               <span className="st">Reminders {reminders.filter(r=>!r.done).length>0&& <span style={{fontSize:11,fontWeight:700,background:"var(--amber)",color:"#fff",borderRadius:10,padding:"1px 7px",marginLeft:6}}>{reminders.filter(r=>!r.done).length}</span>}</span>
               <div style={{display:"flex",alignItems:"center",gap:16}}>
                 <span style={{fontSize:16,color:"var(--text3)",lineHeight:1}}>{remindersOpen?"↑":"↓"}</span>
@@ -1567,7 +1560,7 @@ const Dashboard = ({jobs,tasks,setTasks,reminders,setReminders,inbox,pendingInta
                 setSelReminder(null);
               }}>→ Task</button>
               <button className="btn btn-ghost" onClick={()=>{setReminders(p=>p.map(r=>r.id===selReminder.id?{...r,done:true}:r));setSelReminder(null);}}>✓ Done</button>
-              <button className="btn btn-blue" onClick={()=>{setReminders(p=>p.map(r=>r.id===selReminder.id?{...r,...selReminder,text:selReminder.title}:r));setSelReminder(null);}}>Save</button>
+              <button className="btn btn-amber" onClick={()=>{setReminders(p=>p.map(r=>r.id===selReminder.id?{...r,...selReminder,text:selReminder.title}:r));setSelReminder(null);}}>Save</button>
             </>}>
             <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}}>
               <a href={`mailto:?subject=${encodeURIComponent(selReminder.title||selReminder.text||"")}&body=${mb(selReminder.title||selReminder.text,selReminder.notes,"",`Regards,\n${ACCOUNT.name}`)}`}
@@ -1721,11 +1714,11 @@ const TasksPage = ({tasks,setTasks,jobs,onNav}) => {
     <div className="page">
       <div className="flex ai-c jb mb-20">
         <div><h1 style={{fontSize:20,fontWeight:700}}>Tasks</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>{tasks.filter(t=>!t.done).length} open · {tasks.filter(t=>t.done).length} completed</p></div>
-        <button className="btn btn-blue" onClick={()=>setShowNew(true)}><Ic n="plus" s={15}/> New Task</button>
+        <button className="btn btn-green" onClick={()=>setShowNew(true)}><Ic n="plus" s={15}/> New Task</button>
       </div>
 
       <div className="tabs">
-        {[["open","Open"],["done","Completed"],["all","All"]].map(([v,l])=><button key={v} className={`tab${filter===v?" on":""}`} onClick={()=>setFilter(v)}>{l}</button>)}
+        {[["open","Open"],["done","Completed"]].map(([v,l])=><button key={v} className={`tab${filter===v?" on":""}`} onClick={()=>setFilter(v)}>{l}</button>)}
       </div>
 
       <div className="card" style={{padding:0}}>
@@ -1834,7 +1827,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
       <div className="flex ai-c jb mb-16">
         <div><h1 style={{fontSize:20,fontWeight:700}}>Reminders</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>Time-based · {open.length} active · {done.length} done</p></div>
         <div className="flex gap-8">
-          <button className="btn btn-blue" onClick={()=>setShowNew(true)}><Ic n="plus" s={15}/> Add Reminder</button>
+          <button className="btn btn-amber" onClick={()=>setShowNew(true)}><Ic n="plus" s={15}/> Add Reminder</button>
         </div>
       </div>
 
@@ -1901,7 +1894,7 @@ const RemindersPage = ({reminders,setReminders,tasks,setTasks,jobs,onAddNote}) =
       {editReminder&& <Mod title="Reminder" onClose={()=>setEditReminder(null)}
         footer={<>
           <button className="btn btn-ghost" onClick={()=>setEditReminder(null)}>← Back</button>
-          <button className="btn btn-blue" onClick={()=>{setReminders(p=>p.map(r=>r.id===editReminder.id?{...r,...editReminder,text:editReminder.title}:r));setEditReminder(null);}}>Save</button>
+          <button className="btn btn-amber" onClick={()=>{setReminders(p=>p.map(r=>r.id===editReminder.id?{...r,...editReminder,text:editReminder.title}:r));setEditReminder(null);}}>Save</button>
         </>}>
         {/* Top-right icon row — email + copy */}
         <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:14}}>
@@ -1930,7 +1923,7 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
   const [reviewIntake,setReviewIntake]=useState(null);
   const [showScanner,setShowScanner]=useState(false);
   const filtered=jobs.filter(j=>{
-    const mf=filter==="all"||filter==="prospects"?filter==="prospects"?j.is_future_prospect:true:j.status===filter;
+    const mf=filter==="all"?true:filter==="prospects"?j.is_future_prospect:filter==="active"?!j.checkboxes?.completed:j.status===filter;
     const ms=!search||j.name.toLowerCase().includes(search.toLowerCase())||j.client.toLowerCase().includes(search.toLowerCase())||j.address.toLowerCase().includes(search.toLowerCase());
     return mf&&ms;
   });
@@ -1953,7 +1946,7 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
         </div>
         {pendingIntake.map(p=>(
           <div key={p.id} className="li" onClick={()=>setReviewIntake(p)} style={{cursor:"pointer"}}>
-            <div className="pc-av" style={{width:40,height:40,fontSize:13}}>{ini(p.name)}</div>
+            
             <div className="li-main">
               <div className="li-title">{p.name}</div>
               <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{p.address.split(",")[0]} · Submitted {p.submitted}</div>
@@ -1968,17 +1961,17 @@ const JobsList = ({jobs,onSelect,onNew,onScanWorkOrder,pendingIntake,onAcceptInt
 
       <div className="flex ai-c gap-12 mb-16" style={{flexWrap:"wrap"}}>
         <div className="search-wrap"><Ic n="search" s={15}/><input className="search-input" placeholder="Search by name, client, address…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
-        <div className="tabs" style={{marginBottom:0}}>{[["all","All"],["active","Active"],["upcoming","Upcoming"],["completed","Completed"],["prospects","🟣 Prospects"]].map(([v,l])=><button key={v} className={`tab${filter===v?" on":""}`} onClick={()=>setFilter(v)}>{l}</button>)}</div>
+        <div className="tabs" style={{marginBottom:0}}>{[["all","All"],["active","Open"],["completed","Completed"],["prospects","🟣 Prospects"]].map(([v,l])=><button key={v} className={`tab${filter===v?" on":""}`} onClick={()=>setFilter(v)}>{l}</button>)}</div>
       </div>
       <div className="card" style={{padding:0}}>
         {filtered.length===0?<div className="em"><Ic n="jobs" s={32} col="var(--text3)"/><p style={{marginTop:8}}>No jobs found</p></div>
         :filtered.map(j=>(
           <div key={j.id} className="li" onClick={()=>onSelect(j.id)} style={j.status==="completed"?{opacity:0.55}:{}}>
             <div style={{width:5,alignSelf:"stretch",borderRadius:"4px 0 0 4px",background:statusColor[j.status]||"var(--border)",flexShrink:0,margin:"-12px 0 -12px -16px"}}/>
-            <div className="pc-av" style={{width:40,height:40,fontSize:13,marginLeft:4}}>{ini(j.client)}</div>
+            
             <div className="li-main">
-              <div className="li-title">{j.address||j.name}{j.is_future_prospect&& <span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#7C3AED",marginLeft:6,verticalAlign:"middle"}}/>}</div>
-              <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client}</div>
+              <div className="li-title">{j.checkboxes?.completed&& <span style={{color:"var(--green)",marginRight:5}}>✓</span>}{j.address||j.name}{j.is_future_prospect&& <span style={{display:"inline-block",width:7,height:7,borderRadius:"50%",background:"#7C3AED",marginLeft:6,verticalAlign:"middle"}}/>}</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>{j.client}{j.date&&<span style={{marginLeft:8,color:"var(--teal2)",fontWeight:600}}>📅 {fmtDate(j.date)}</span>}</div>
               <div style={{marginTop:6}}><JobTags job={j}/>{j.status==="completed"&&(!j.certUploaded||!j.invoiceUploaded)&& <span style={{marginLeft:6,fontSize:11,color:"var(--amber)"}}>⚠️</span>}</div>
             </div>
             <div className="li-meta"><span style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>${(j.value||0).toLocaleString()}</span><Ic n="chevR" s={15} col="var(--text3)"/></div>
@@ -2023,6 +2016,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
   const [showProspect,setShowProspect]=useState(false);
   const [showDupe,setShowDupe]=useState(false);
   const [dupeForm,setDupeForm]=useState({});
+  const [showReview,setShowReview]=useState(false);
   const [ufText,setUfText]=useState("");
   const [tf,setTf]=useState({title:"",priority:"P2",assignedTo:"Me",dueDate:"",notes:""});
   const [editJob,setEditJob]=useState(false);
@@ -2238,7 +2232,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
   const saveDupe=()=>{
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const si=(dupeForm.scope||"").split(/\n+/).filter(s=>s.trim().length>2).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
-    const nj={id:`J${uid()}`,ref,name:dupeForm.address||dupeForm.client||"New Job",client:dupeForm.client||"",builder:dupeForm.builder||"",address:dupeForm.address||"",phone:dupeForm.phone||"",email:dupeForm.email||"",scope:dupeForm.scope||"",notes:"Duplicated from "+job.ref,status:"upcoming",value:Number(dupeForm.value)||0,date:dupeForm.date||"",type:job.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems:si,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
+    const nj={id:`J${uid()}`,ref,name:dupeForm.address||dupeForm.client||"New Job",client:dupeForm.client||"",builder:dupeForm.builder||"",address:dupeForm.address||"",phone:dupeForm.phone||"",email:dupeForm.email||"",scope:dupeForm.scope||"",notes:"Duplicated from "+job.ref,status:"active",value:Number(dupeForm.value)||0,date:dupeForm.date||"",type:job.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems:si,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
     setJobs(p=>[nj,...p]);setShowDupe(false);onBack();
   };
 
@@ -2254,6 +2248,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
         <div className="flex gap-8 ai-c">
           <JobTags job={job}/>
           <button style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,border:"1px solid var(--border)",background:"#fff",fontSize:12,fontWeight:600,color:"var(--text2)",cursor:"pointer",flexShrink:0}} onClick={()=>{setDupeForm({address:"",client:job.client||"",builder:job.builder||"",phone:job.phone||"",email:job.email||"",scope:job.scope||"",value:job.value||"",date:""});setShowDupe(true);}}>⧉ Duplicate</button>
+          <button style={{display:"inline-flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:8,border:"1px solid #f59e0b",background:"#fffbeb",fontSize:12,fontWeight:600,color:"#d97706",cursor:"pointer",flexShrink:0}} onClick={()=>setShowReview(true)}>⭐ Review</button>
           {job.phone&& <a href={`tel:${job.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:9,background:"var(--teal)",color:"#fff",fontSize:13,fontWeight:700,textDecoration:"none",flexShrink:0}}>📞 Call</a>}
         </div>
       </div>
@@ -2285,12 +2280,12 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
                   <div className="fg"><label className="fl">Address</label><input className="fi" value={jf.address} onChange={e=>setJf(p=>({...p,address:e.target.value}))}/></div>
                   <div className="fr"><div className="fg"><label className="fl">Customer</label><input className="fi" value={jf.client} onChange={e=>setJf(p=>({...p,client:e.target.value}))}/></div><div className="fg"><label className="fl">Builder</label><input className="fi" value={jf.builder||""} onChange={e=>setJf(p=>({...p,builder:e.target.value}))}/></div></div>
                   <div className="fr"><div className="fg"><label className="fl">Phone</label><input className="fi" value={jf.phone} onChange={e=>setJf(p=>({...p,phone:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input className="fi" value={jf.email} onChange={e=>setJf(p=>({...p,email:e.target.value}))}/></div></div>
-                  <div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={jf.date} onChange={e=>setJf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Value AUD</label><input className="fi" type="number" value={jf.value||""} onChange={e=>setJf(p=>({...p,value:e.target.value}))}/></div></div>
+                  <div className="fr"><div className="fg"><label className="fl">Booking Date</label><div style={{display:"flex",gap:6,alignItems:"center"}}><input type="date" className="fi" style={{flex:1}} value={jf.date} onChange={e=>setJf(p=>({...p,date:e.target.value}))}/>{jf.date&&<button onClick={()=>setJf(p=>({...p,date:""}))} style={{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--border)",background:"#fff",fontSize:12,color:"var(--text3)",cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>✕</button>}</div></div><div className="fg"><label className="fl">Value AUD</label><input className="fi" type="number" value={jf.value||""} onChange={e=>setJf(p=>({...p,value:e.target.value}))}/></div></div>
                   <div className="fg"><label className="fl">Scope</label><textarea className="fta" style={{minHeight:80}} value={jf.scope} onChange={e=>setJf(p=>({...p,scope:e.target.value}))}/></div>
                   <button className="btn btn-blue btn-sm w-full" onClick={saveJobEdit}>Save Changes</button>
                 </div>
               : <div style={{padding:"4px 16px 12px"}}>
-                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Date",job.date?fmtDate(job.date):null],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&& <div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+                  {[["Customer",job.client],["Builder",job.builder],["Address",job.address],["Phone",job.phone?<a href={`tel:${job.phone}`} style={{color:"var(--blue)",textDecoration:"none"}}>{job.phone}</a>:null],["Email",job.email?<a href={`mailto:${job.email}?subject=Re: ${encodeURIComponent(job.address||job.name)}`} style={{color:"var(--blue)",textDecoration:"none"}}>✉ {job.email}</a>:null],["Booking Date",job.date?fmtDate(job.date):null],job.value?["Value",`$${(job.value||0).toLocaleString()} AUD`]:null].filter(Boolean).map(([l,v])=>v&& <div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
                 </div>
             }
           </div>
@@ -2545,7 +2540,7 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
             </div>
             {openJobTasks.length===0&&doneJobTasks.length===0&& <div style={{padding:"14px 16px",fontSize:13,color:"var(--text3)"}}>No tasks yet</div>}
             {openJobTasks.map(t=>(
-              <div key={t.id} className="task-row">
+              <div key={t.id} className="task-row" style={{}}>
                 <HoldCheck done={false} onComplete={()=>completeTask(t.id)} onUncomplete={()=>{}}/>
                 <div className="t-body">
                   <div className="t-title">{t.title}</div>
@@ -2634,6 +2629,19 @@ const JobDetail = ({job,jobs,tasks,setTasks,setJobs,onBack,onDuplicate}) => {
         </div>
       </div>
 
+      {showReview && <Mod title="⭐ Request a Review" onClose={()=>setShowReview(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowReview(false)}>Cancel</button></>}>
+        {!ACCOUNT.reviewLink&&<div style={{background:"#fff3cd",borderRadius:8,padding:"10px 13px",fontSize:12.5,marginBottom:12,color:"#856404"}}>⚠ Add your Google Review link in Account → Google Review Link first.</div>}
+        <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12}}>Send this to your client to request a 5-star Google review.</p>
+        <div style={{background:"var(--bg)",borderRadius:10,padding:"13px 14px",fontSize:13,lineHeight:1.7,marginBottom:14,color:"var(--text)"}}>
+          Hi {job.client||"there"}, thanks for having us out to {job.address||"your property"}. If you were happy with the work we'd really appreciate a quick Google review — it only takes 30 seconds and means a lot to a small business. {ACCOUNT.reviewLink||"[Add your Google Review link in Account]"} Thanks, {ACCOUNT.name}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          {job.phone&&<a href={`sms:${job.phone}&body=${encodeURIComponent(`Hi ${job.client||"there"}, thanks for having us out to ${job.address||"your property"}. If you were happy with the work we'd really appreciate a quick Google review — it only takes 30 seconds and means a lot to a small business. ${ACCOUNT.reviewLink||""} Thanks, ${ACCOUNT.name}`)}`} style={{flex:1,textAlign:"center",padding:"10px",borderRadius:9,background:"var(--teal)",color:"#fff",fontWeight:700,fontSize:13,textDecoration:"none"}}>📱 SMS</a>}
+          {job.email&&<a href={`mailto:${job.email}?subject=${encodeURIComponent("Thanks for your business!")}&body=${encodeURIComponent(`Hi ${job.client||"there"},\n\nThanks for having us out to ${job.address||"your property"}. If you were happy with the work we'd really appreciate a quick Google review — it only takes 30 seconds and means a lot to a small business.\n\n${ACCOUNT.reviewLink||""}\n\nThanks,\n${ACCOUNT.name}`)}`} style={{flex:1,textAlign:"center",padding:"10px",borderRadius:9,background:"var(--blue)",color:"#fff",fontWeight:700,fontSize:13,textDecoration:"none"}}>✉ Email</a>}
+          {!job.phone&&!job.email&&<p style={{fontSize:12.5,color:"var(--text3)"}}>Add a phone or email to this job to send the review request.</p>}
+        </div>
+      </Mod>}
+
       {showDupe && <Mod title="Duplicate Job" onClose={()=>setShowDupe(false)} footer={<div className="flex gap-8"><button className="btn btn-ghost" onClick={()=>setShowDupe(false)}>Cancel</button><button className="btn btn-teal" onClick={saveDupe}>Create Duplicate</button></div>}>
         <p style={{fontSize:12.5,color:"var(--text3)",marginBottom:12}}>Pre-filled from <strong>{job.address||job.name}</strong>. Edit what's different — typically just the address.</p>
         <div className="fg"><label className="fl">Address *</label><input className="fi" placeholder="New site address" value={dupeForm.address||""} onChange={e=>setDupeForm(p=>({...p,address:e.target.value}))} autoFocus/></div>
@@ -2666,7 +2674,7 @@ const CreateJob = ({jobs,onCreated,onCancel,prefill}) => {
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const name=f.address||f.client||"New Job";
     const scopeItems=f.scope?f.scope.split(/\n+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false})):[];
-    const nj={id:`J${uid()}`,ref,name,client:f.client,builder:f.builder||"",address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"upcoming",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
+    const nj={id:`J${uid()}`,ref,name,client:f.client,builder:f.builder||"",address:f.address,phone:f.phone,email:f.email,scope:f.scope,notes:f.notes,status:"active",value:Number(f.value)||0,date:f.date,type:f.type||"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
     onCreated(nj);
   };
   return (
@@ -2807,7 +2815,7 @@ const AssetsPage = ({assets,setAssets}) => {
     <div className="page">
       <div className="flex ai-c jb mb-20">
         <div><h1 style={{fontSize:20,fontWeight:700}}>Assets</h1><p style={{fontSize:13,color:"var(--text3)",marginTop:3}}>Vans, tools &amp; equipment</p></div>
-        <button className="btn btn-teal" onClick={()=>{setForm({name:"",type:"van",rego:"",notes:"",serviceReminder:""});setShowNew(true)}}><Ic n="plus" s={15}/> Add Asset</button>
+        <button className="btn btn-blue" onClick={()=>{setForm({name:"",type:"van",rego:"",notes:"",serviceReminder:""});setShowNew(true)}}><Ic n="plus" s={15}/> Add Asset</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="twocol">
         <div><div className="st mb-12">Vehicles</div><div className="card mb-16" style={{padding:0}}>{vans.length===0?<div className="em"><Ic n="van" s={28} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No vehicles</p></div>:vans.map(a=><AssetRow key={a.id} a={a}/>)}</div></div>
@@ -2831,15 +2839,30 @@ const AssetsPage = ({assets,setAssets}) => {
 // ─── WORKERS ──────────────────────────────────────────────────────────────────
 const WorkersPage = ({workers,setWorkers}) => {
   const [showNew,setShowNew]=useState(false);
-  const [form,setForm]=useState({name:"",role:"",notes:""});
+  const [form,setForm]=useState({name:"",role:"",phone:"",notes:""});
   const [selW,setSelW]=useState(null);
+  const [mode,setMode]=useState("view");
   const [hf,setHf]=useState({date:TODAY,hrs:""});
-  const add=()=>{if(!form.name.trim())return;setWorkers(p=>[{...form,id:`W${uid()}`,hours:[]},...p]);setForm({name:"",role:"",notes:""});setShowNew(false)};
-  const addHrs=()=>{if(!hf.hrs||!selW)return;setWorkers(p=>p.map(w=>w.id===selW.id?{...w,hours:[{date:hf.date,hrs:Number(hf.hrs)},...w.hours]}:w));setHf({date:TODAY,hrs:""});setSelW(null)};
-  const weekTotal=(hours)=>{
-    const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);
-    return hours.filter(h=>h.date>=weekAgo.toISOString().split("T")[0]).reduce((s,h)=>s+h.hrs,0);
+  const [ef,setEf]=useState({});
+  const workerPhotoRef=useRef(null);
+  const handleWorkerPhoto=(workerId,e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      setWorkers(p=>p.map(w=>w.id===workerId?{...w,photo:ev.target.result}:w));
+      setSelW(s=>s&&s.id===workerId?{...s,photo:ev.target.result}:s);
+    };
+    reader.readAsDataURL(file);
+    e.target.value="";
   };
+
+  const add=()=>{if(!form.name.trim())return;setWorkers(p=>[{...form,id:`W${uid()}`,hours:[]},...p]);setForm({name:"",role:"",phone:"",notes:""});setShowNew(false)};
+  const addHrs=()=>{if(!hf.hrs)return;setWorkers(p=>p.map(w=>w.id===selW.id?{...w,hours:[{date:hf.date,hrs:Number(hf.hrs)},...w.hours]}:w));setHf({date:TODAY,hrs:""});setMode("view");};
+  const saveEdit=()=>{setWorkers(p=>p.map(w=>w.id===selW.id?{...w,...ef}:w));setSelW(s=>({...s,...ef}));setMode("view");};
+  const weekTotal=(hours)=>{const weekAgo=new Date();weekAgo.setDate(weekAgo.getDate()-7);return hours.filter(h=>h.date>=weekAgo.toISOString().split("T")[0]).reduce((s,h)=>s+h.hrs,0);};
+
+  const openWorker=(w)=>{setSelW(w);setEf({name:w.name,role:w.role||"",phone:w.phone||"",notes:w.notes||""});setMode("view");};
+
   return (
     <div className="page">
       <div className="flex ai-c jb mb-20">
@@ -2850,11 +2873,12 @@ const WorkersPage = ({workers,setWorkers}) => {
         {workers.map(w=>{
           const total=w.hours.reduce((s,h)=>s+h.hrs,0);
           const week=weekTotal(w.hours);
-          return <div key={w.id} className="card p-20">
+          return <div key={w.id} className="card p-20" style={{cursor:"pointer"}} onClick={()=>openWorker(w)}>
             <div className="flex ai-c gap-12 mb-12">
-              <div className="av" style={{width:44,height:44,fontSize:16,borderRadius:12,flexShrink:0}}>{ini(w.name)}</div>
+              {w.photo
+                ?<img src={w.photo} alt={w.name} style={{width:44,height:44,borderRadius:12,objectFit:"cover",flexShrink:0}}/>
+                :<div className="av" style={{width:44,height:44,fontSize:16,borderRadius:12,flexShrink:0}}>{ini(w.name)}</div>}
               <div style={{flex:1}}><div style={{fontWeight:700,fontSize:15}}>{w.name}</div>{w.role&& <div style={{fontSize:12.5,color:"var(--text3)"}}>{w.role}</div>}</div>
-              <button className="btn btn-ghost btn-xs" onClick={()=>{setSelW(w);setHf({date:TODAY,hrs:""})}}>Log Hours</button>
             </div>
             <div style={{display:"flex",gap:12,marginBottom:10}}>
               <div style={{flex:1,background:"var(--bg)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
@@ -2866,14 +2890,66 @@ const WorkersPage = ({workers,setWorkers}) => {
                 <div style={{fontSize:10,color:"var(--text3)"}}>ALL TIME</div>
               </div>
             </div>
-            {w.hours.slice(0,4).map((h,i)=><div key={i} className="dr" style={{padding:"5px 0"}}><div className="dl">{fmtDate(h.date)}</div><div className="dv" style={{fontSize:13}}>{h.hrs}h</div></div>)}
             {w.hours.length===0&& <p style={{fontSize:13,color:"var(--text3)"}}>No hours logged</p>}
+            {w.hours.slice(0,3).map((h,i)=><div key={i} className="dr" style={{padding:"4px 0"}}><div className="dl">{fmtDate(h.date)}</div><div className="dv" style={{fontSize:12}}>{h.hrs}h</div></div>)}
           </div>;
         })}
       </div>
       {workers.length===0&& <div className="card em"><Ic n="workers" s={32} col="var(--text3)"/><p style={{marginTop:8,fontSize:13}}>No workers yet</p></div>}
-      {showNew&& <Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}><div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice, VA" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div></Mod>}
-      {selW&& <Mod title={`Log Hours — ${selW.name}`} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}><div className="fr"><div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Hours *</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div></div></Mod>}
+
+      {showNew&& <Mod title="Add Worker" onClose={()=>setShowNew(false)} footer={<><button className="btn btn-ghost" onClick={()=>setShowNew(false)}>Cancel</button><button className="btn btn-blue" onClick={add}>Add</button></>}>
+        <div className="fg"><label className="fl">Name *</label><input className="fi" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} autoFocus/></div>
+        <div className="fg"><label className="fl">Role</label><input className="fi" placeholder="e.g. Apprentice" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Phone</label><input className="fi" placeholder="0400 000 000" value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:60}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div>
+      </Mod>}
+
+      {selW&&mode==="view"&& <Mod title={selW.name} onClose={()=>setSelW(null)} footer={<><button className="btn btn-ghost" onClick={()=>setSelW(null)}>Close</button><button className="btn btn-ghost" onClick={()=>setMode("hours")}>Log Hours</button><button className="btn btn-blue" onClick={()=>setMode("edit")}>Edit</button></>}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <div style={{position:"relative",flexShrink:0}}>
+            <input ref={workerPhotoRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleWorkerPhoto(selW.id,e)}/>
+            {selW.photo
+              ?<img src={selW.photo} alt={selW.name} style={{width:60,height:60,borderRadius:16,objectFit:"cover",cursor:"pointer"}} onClick={()=>workerPhotoRef.current?.click()}/>
+              :<div className="av" style={{width:60,height:60,fontSize:20,borderRadius:16,cursor:"pointer"}} onClick={()=>workerPhotoRef.current?.click()}>{ini(selW.name)}</div>}
+            <div style={{position:"absolute",bottom:-2,right:-2,width:18,height:18,borderRadius:"50%",background:"var(--teal)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}} onClick={()=>workerPhotoRef.current?.click()}>
+              <Ic n="camera" s={10} col="#fff"/>
+            </div>
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:17}}>{selW.name}</div>
+            {selW.role&& <div style={{fontSize:13,color:"var(--text3)"}}>{selW.role}</div>}
+            {selW.phone&& <a href={`tel:${selW.phone}`} style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:6,padding:"5px 12px",borderRadius:8,background:"var(--teal)",color:"#fff",fontSize:12,fontWeight:700,textDecoration:"none"}}>📞 Call</a>}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,marginBottom:14}}>
+          <div style={{flex:1,background:"var(--bg)",borderRadius:8,padding:"10px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:700,color:"var(--navy)"}}>{weekTotal(selW.hours)}h</div>
+            <div style={{fontSize:10,color:"var(--text3)"}}>THIS WEEK</div>
+          </div>
+          <div style={{flex:1,background:"var(--bg)",borderRadius:8,padding:"10px",textAlign:"center"}}>
+            <div style={{fontSize:20,fontWeight:700,color:"var(--text2)"}}>{selW.hours.reduce((s,h)=>s+h.hrs,0)}h</div>
+            <div style={{fontSize:10,color:"var(--text3)"}}>ALL TIME</div>
+          </div>
+        </div>
+        {selW.notes&& <p style={{fontSize:13,color:"var(--text2)",marginBottom:12,lineHeight:1.5}}>{selW.notes}</p>}
+        <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.4,marginBottom:8}}>Hours Log</div>
+        {selW.hours.length===0&& <p style={{fontSize:13,color:"var(--text3)"}}>No hours logged yet.</p>}
+        {selW.hours.map((h,i)=><div key={i} className="dr" style={{padding:"6px 0"}}><div className="dl">{fmtDate(h.date)}</div><div className="dv">{h.hrs}h</div></div>)}
+      </Mod>}
+
+      {selW&&mode==="edit"&& <Mod title="Edit Worker" onClose={()=>setMode("view")} footer={<><button className="btn btn-ghost" onClick={()=>setMode("view")}>Cancel</button><button className="btn btn-blue" onClick={saveEdit}>Save</button></>}>
+        <div className="fg"><label className="fl">Name</label><input className="fi" value={ef.name} onChange={e=>setEf(p=>({...p,name:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Role</label><input className="fi" value={ef.role} onChange={e=>setEf(p=>({...p,role:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Phone</label><input className="fi" value={ef.phone} onChange={e=>setEf(p=>({...p,phone:e.target.value}))}/></div>
+        <div className="fg"><label className="fl">Notes</label><textarea className="fta" style={{minHeight:60}} value={ef.notes} onChange={e=>setEf(p=>({...p,notes:e.target.value}))}/></div>
+      </Mod>}
+
+      {selW&&mode==="hours"&& <Mod title={`Log Hours — ${selW.name}`} onClose={()=>setMode("view")} footer={<><button className="btn btn-ghost" onClick={()=>setMode("view")}>Cancel</button><button className="btn btn-blue" onClick={addHrs}>Log Hours</button></>}>
+        <div className="fr">
+          <div className="fg"><label className="fl">Date</label><input type="date" className="fi" value={hf.date} onChange={e=>setHf(p=>({...p,date:e.target.value}))}/></div>
+          <div className="fg"><label className="fl">Hours</label><input type="number" className="fi" value={hf.hrs} onChange={e=>setHf(p=>({...p,hrs:e.target.value}))}/></div>
+        </div>
+      </Mod>}
     </div>
   );
 };
@@ -2902,8 +2978,8 @@ const AccountPage = ({logoUrl, setLogoUrl}) => {
               <div><div style={{fontWeight:700,fontSize:17}}>{f.name}</div><div style={{fontSize:13,color:"var(--text2)"}}>{f.trade} · {f.company}</div></div>
             </div>
             <div style={{padding:"0 20px 20px"}}>
-              {ed?<>{[["name","Full name"],["company","Company"],["trade","Trade"],["email","Email"],["phone","Phone"],["regNo","Reg No."],["address","Address"]].map(([k,l])=><div key={k} className="fg"><label className="fl">{l}</label><input className="fi" value={f[k]} onChange={e=>setF(p=>({...p,[k]:e.target.value}))}/></div>)}<button className="btn btn-blue w-full" onClick={()=>setEd(false)}>Save Changes</button></>
-              :[["Name",f.name],["Company",f.company],["Trade",f.trade],["Email",f.email],["Phone",f.phone],["Reg No.",f.regNo],["Address",f.address]].map(([l,v])=><div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
+              {ed?<>{[["name","Full name"],["company","Company"],["trade","Trade"],["email","Email"],["phone","Phone"],["regNo","Reg No."],["address","Address"],["reviewLink","Google Review Link"]].map(([k,l])=><div key={k} className="fg"><label className="fl">{l}</label><input className="fi" value={f[k]||""} onChange={e=>setF(p=>({...p,[k]:e.target.value}))}/></div>)}<button className="btn btn-blue w-full" onClick={()=>setEd(false)}>Save Changes</button></>
+              :[["Name",f.name],["Company",f.company],["Trade",f.trade],["Email",f.email],["Phone",f.phone],["Reg No.",f.regNo],["Address",f.address],["Google Review",f.reviewLink?<a href={f.reviewLink} target="_blank" rel="noopener noreferrer" style={{color:"var(--blue)",fontSize:12}}>Link set ✓</a>:"Not set"]].map(([l,v])=><div key={l} className="dr"><div className="dl">{l}</div><div className="dv">{v}</div></div>)}
             </div>
           </div>
           <div className="card p-20">
@@ -2924,7 +3000,7 @@ const AccountPage = ({logoUrl, setLogoUrl}) => {
               : <button className="btn btn-ghost btn-sm w-full mb-12" onClick={()=>logoRef.current?.click()}><Ic n="upload" s={13}/> Upload Company Logo</button>
             }
             <div className="st mb-12">Plan</div>
-            <div style={{background:"linear-gradient(135deg,var(--navy),var(--navy2))",borderRadius:12,padding:"16px 18px",color:"#fff"}}><div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Starter Plan</div><div style={{fontSize:12.5,opacity:.8}}>Voice · Tasks · Jobs · Reminders · Assets · Workers</div></div>
+            <div style={{background:"linear-gradient(135deg,var(--navy),var(--navy2))",borderRadius:12,padding:"16px 18px",color:"#fff"}}><div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Starter Plan</div><div style={{fontSize:12.5,opacity:.8,marginBottom:10}}>Voice · Tasks · Jobs · Reminders · Assets · Workers</div><a href="https://soletasker.com.au" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#7DD8C8",fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>soletasker.com.au ↗</a></div>
           </div>
         </div>
         <div>
@@ -2948,8 +3024,17 @@ const AccountPage = ({logoUrl, setLogoUrl}) => {
               <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>📋 Work Orders</p>
               <p style={{marginBottom:6,fontSize:13}}>Got a builder's work order? Go to <strong>Jobs → Scan Work Order</strong>. Paste the email text or upload a photo — all job details fill in automatically.</p>
               <p style={{marginBottom:12,fontSize:13}}>Screenshot PDF pages on iPhone: side button + volume up.</p>
-              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>📱 Install on your phone</p>
-              <p style={{fontSize:13}}>Open this site in Safari → Share → <strong>Add to Home Screen</strong>. Works like a native app — full screen, no browser bar.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>🔗 Your job intake link</p>
+              <p style={{marginBottom:12,fontSize:13}}>Go to <strong>Account → Your Intake Link</strong>. Send it to a client or builder. They fill in their details and scope — it lands on your dashboard as a pending job ready to accept. No back-and-forth.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>👤 Assign work by voice</p>
+              <p style={{marginBottom:12,fontSize:13}}>Say who it's for, what needs doing, and the priority. Try: <span style={{color:"var(--teal2)",fontWeight:500}}>"Task for Jake, pick up cable from Bunnings, P1"</span> — the app sets the assignee and priority automatically.</p>
+              <p style={{marginBottom:12,fontSize:13}}>Open any job — tap <strong>Call</strong> to dial the client instantly. Tap their email to open a pre-filled message with the job address in the subject line. No copy-pasting.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>📋 SWMS in 60 seconds</p>
+              <p style={{marginBottom:12,fontSize:13}}>Go to <strong>More → SWMS</strong>. Pull from a job to auto-fill the site address. Hazards are pre-ticked — uncheck what doesn't apply. Add workers, download, send. Done before you're out of the van.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>🔁 Repeat jobs for builders</p>
+              <p style={{marginBottom:12,fontSize:13}}>Open a job → tap <strong>⧉ Duplicate</strong>. Change the address, keep everything else. Saves 3 minutes every time a builder sends the same type of work.</p>
+              <p style={{marginBottom:6,fontWeight:600,color:"var(--text)"}}>🟣 Future prospects</p>
+              <p style={{fontSize:13}}>Scroll to the bottom of any job — expand <strong>Future Prospect</strong> to note extra work the client mentioned. Shows a purple dot on the job list so you never forget to follow up.</p>
             </div>
           </div>
         </div>
@@ -3167,10 +3252,12 @@ const SWMSPage = ({jobs, logoUrl}) => {
 
     finalCanvas.toBlob(blob=>{
       const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");
-      a.href=url;a.download=`SWMS_${(f.jobAddress||"job").replace(/[^a-z0-9]/gi,"_")}_${f.date.replace(/\//g,"-")}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Open image in new tab — user can Share → Save to Files or Print → Save as PDF
+      const win=window.open("","_blank");
+      if(win){
+        win.document.write(`<!DOCTYPE html><html><head><title>SWMS</title><style>body{margin:0;display:flex;justify-content:center;background:#f0f0f0;}img{max-width:100%;height:auto;}@media print{body{background:#fff;}}</style></head><body><img src="${url}" onload="window.focus()"/><script>window.onload=function(){window.print();}<\/script></body></html>`);
+        win.document.close();
+      }
       setGenerating(false);
     },"image/png");
   };
@@ -3361,7 +3448,7 @@ export default function App() {
     const ref=`J-${String(jobs.length+1).padStart(3,"0")}`;
     const name=jobEdit.name||jobEdit.client||"New Job";
     const scopeItems=(jobEdit.scope||"").split(/\n+/).filter(s=>s.trim().length>4).map((s,i)=>({id:`SI${uid()}_${i}`,text:s.trim(),done:false}));
-    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",builder:jobEdit.builder||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"upcoming",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
+    const nj={id:`J${uid()}`,ref,name,client:jobEdit.client||"",builder:jobEdit.builder||"",address:jobEdit.address||"",phone:"",email:"",scope:jobEdit.scope||transcript,notes:"Created from capture",status:"active",value:0,date:"",type:"Job",checkboxes:{booked:false,cert:false,invoice:false,completed:false},certUploaded:false,invoiceUploaded:false,certNotes:"",invNotes:"",certFile:null,invFile:null,tasks:[],scopeItems,unfinished:[],notesLog:[],memos:[],photos:[],plans:[],prospect_note:"",is_future_prospect:false};
     setJobs(p=>[nj,...p]);
     setSelJobId(nj.id);setJobsMode("detail");setNav("jobs");
   };
