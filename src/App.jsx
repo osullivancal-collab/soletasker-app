@@ -258,6 +258,7 @@ button,input,select,textarea{font-family:'Inter',sans-serif}
 .mw{background:#fff;border-radius:16px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.16);animation:mIn .17s ease}
 .mw-lg{max-width:680px}
 @keyframes mIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .mh{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .mt2{font-size:15px;font-weight:700}
 .mb2{padding:20px;max-height:75vh;overflow-y:auto}
@@ -748,7 +749,10 @@ const CaptureModal = ({
   const [editing, setEditing] = useState(false);
 
   const handleClose = () => {
+    clearInterval(tTimerRef.current);
     setParsedResult(null);
+    setIsTranscribing(false);
+    setTranscriptError(false);
     onClose();
   };
   const [timer, setTimer] = useState(0);
@@ -756,6 +760,10 @@ const CaptureModal = ({
   const [confirming, setConfirming] = useState(false);
   const [showWOScanner, setShowWOScanner] = useState(false);
   const [parsedResult, setParsedResult] = useState(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptTimer, setTranscriptTimer] = useState(0);
+  const tTimerRef = useRef(null);
+  const [transcriptError, setTranscriptError] = useState(false);
   const [scopeRec, setScopeRec] = useState(false);
   const scopeSrRef = useRef(null);
   const startScopeVoice=(setter)=>{
@@ -777,7 +785,8 @@ const CaptureModal = ({
 
   const startRec = () => {
     setStep("recording"); setTimer(0); setText(""); setEditing(false);
-    setParsedResult(null);
+    setParsedResult(null); setIsTranscribing(false);
+    setTranscriptTimer(0); setTranscriptError(false);
     tRef.current = setInterval(()=>setTimer(t=>{if(t>=MAX-1){stopRec();return t+1;}return t+1;}),1000);
     if(navigator.mediaDevices && window.MediaRecorder){
       navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
@@ -812,17 +821,26 @@ const CaptureModal = ({
         const blob=new Blob(audioChunksRef.current,{type:"audio/webm"});
         audioChunksRef.current=[];
         setStep("choose");
-        setText("Transcribing…");
+        setText("");
+        setIsTranscribing(true);
+        setTranscriptError(false);
+        setTranscriptTimer(0);
+        tTimerRef.current=setInterval(()=>setTranscriptTimer(t=>t+1),1000);
         try{
           const jobNames=jobs.map(j=>`"${j.name||j.address}" (id:${j.id})`).join(",");
           const res=await fetch(`/api/transcribe?jobs=${encodeURIComponent(jobNames)}`,{method:"POST",headers:{"Content-Type":"audio/webm"},body:blob});
           const data=await res.json();
-          setText(data.transcript||"");
+          clearInterval(tTimerRef.current);
+          const t=data.transcript||"";
+          if(!t){setTranscriptError(true);setIsTranscribing(false);return;}
+          setText(t);
           if(data.parsed) setParsedResult(data.parsed);
         }catch(err){
           console.error("Transcribe error:",err);
-          setText("");
+          clearInterval(tTimerRef.current);
+          setTranscriptError(true);
         }
+        setIsTranscribing(false);
       };
       mrd.recorder.stop();
     } else {
@@ -867,7 +885,8 @@ const CaptureModal = ({
 
   // THOUGHT DUMP — saves immediately using cleaned text
   const saveThoughtDump = () => {
-    if(!text.trim()) return;
+    if(isTranscribing) return;
+    if(!text.trim() || text.trim().length < 3) return;
     const clean = cleanTranscript(text);
     onSaveReminder({
       id:`R${uid()}`, title:clean.slice(0,120), text:clean.slice(0,120),
@@ -878,32 +897,88 @@ const CaptureModal = ({
 
   const saveNote = () => { onSaveNote({id:`N${uid()}`,text:cleanTranscript(text),date:TODAY,source:mode}); onClose(); };
 
-  // User picks Task/Job/Reminder → AI runs in background → confirm form appears
-  const pickAction = async (type) => {
-    const clean = cleanTranscript(text);
+  // User picks Task/Job/Reminder → use parsedResult from server → confirm form appears
+  const pickAction = (type) => {
+    const raw = text.trim();
+    // HARD GUARD — never create anything if transcription is still running or text is missing
+    if(isTranscribing) return;
+    if(!raw || raw.length < 3) return;
+
+    const clean = cleanTranscript(raw);
     setConfirmType(type);
-    const fallback = clean;
-    setTaskDraft({title:fallback, priority:"P2", assignedTo:"Me", jobId:"", dueDate:"", notes:""});
+
+    // Parse due date from transcript locally
+    const parseDue = (t) => {
+      const s = t.toLowerCase();
+      const d = new Date();
+      if(/\btomorrow\b/.test(s)){d.setDate(d.getDate()+1);return d.toISOString().split("T")[0];}
+      if(/\bnext week\b/.test(s)){d.setDate(d.getDate()+7);return d.toISOString().split("T")[0];}
+      if(/\bend of week\b|\bfriday\b/.test(s)){const day=d.getDay();d.setDate(d.getDate()+(5-day+7)%7||7);return d.toISOString().split("T")[0];}
+      if(/\btoday\b|\bnow\b/.test(s)){return d.toISOString().split("T")[0];}
+      return null;
+    };
+
+    // Remove filler phrases from title
+    const cleanTitle = (t) => t
+      .replace(/\b(create a task|add a task|new task|task for me|don't forget|dont forget|reminder to|remind me to|remind me|please|just|me\.?|urgent\.?|priority\s*\d+\.?)\b/gi,"")
+      .replace(/[,\.]+$/,"").replace(/\s{2,}/g," ").trim();
+
+    // Priority — explicit number wins over "urgent"
+    const parsePriority = (t) => {
+      const s = t.toLowerCase();
+      if(/priority\s*(3|three)|p3|\blow priority\b/.test(s)) return "P3";
+      if(/priority\s*(2|two)|p2/.test(s)) return "P2";
+      if(/priority\s*(1|one)|p1|\burgent\b|\basap\b/.test(s)) return "P1";
+      return "P2";
+    };
+
+    const inferredDue = parseDue(raw);
+    const inferredPriority = parsePriority(raw);
+    const titleClean = cleanTitle(clean);
+
+    setTaskDraft({title:titleClean||clean, priority:inferredPriority, assignedTo:"Me", jobId:"", dueDate:inferredDue||"", notes:""});
     setJobDraft({name:"", client:"", address:"", scope:clean, notes:""});
-    setReminderDraft({title:fallback, notes:"", dueDate:"", dueTime:"", linkedJobId:""});
+    setReminderDraft({title:titleClean||clean, notes:"", dueDate:inferredDue||"", dueTime:"", linkedJobId:""});
     setStep("confirm");
 
-    // Use parsedResult already returned from /api/transcribe in stopRec
     const r = parsedResult;
     if(r) {
       const aiTasks = Array.isArray(r.tasks) && r.tasks.length > 0 && typeof r.tasks[0]==="object" ? r.tasks : null;
+
+      // Conservative job link — only if high confidence from server
+      const safeJobId = (r.job_id && r.confidence !== "low") ? r.job_id : "";
+
+      // Explicit priority number in transcript always wins
+      const hasExplicitPriority = /priority\s*[123]|p[123]/i.test(raw);
+      const finalPriority = hasExplicitPriority ? inferredPriority : (r.priority||inferredPriority);
+
       if(aiTasks && aiTasks.length > 1) {
-        setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:r.job_id||p.jobId}));
+        setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:safeJobId}));
       } else {
-        setTaskDraft(p=>({...p, priority:r.priority||p.priority, assignedTo:r.assigned_to||p.assignedTo, jobId:r.job_id||p.jobId}));
+        setTaskDraft(p=>({...p,
+          title: r.task_title ? cleanTitle(r.task_title) : p.title,
+          priority: finalPriority,
+          assignedTo: r.assigned_to||p.assignedTo,
+          jobId: safeJobId,
+          dueDate: r.reminder_date||inferredDue||p.dueDate,
+          notes: r.notes||p.notes
+        }));
       }
       setJobDraft(p=>({...p, name:r.job_name||r.client_name||p.name, client:r.client_name||p.client, address:r.address||p.address, scope:r.notes||p.scope}));
-      setReminderDraft(p=>({...p, title:r.reminder_text||p.title, notes:r.notes||p.notes, dueDate:r.reminder_date||p.dueDate, linkedJobId:r.job_id||p.linkedJobId}));
+      setReminderDraft(p=>({...p,
+        title: r.reminder_text ? cleanTitle(r.reminder_text) : p.title,
+        notes: r.notes||p.notes,
+        dueDate: r.reminder_date||inferredDue||p.dueDate,
+        linkedJobId: safeJobId
+      }));
     }
   };
 
   const doSave = () => {
+    // Safety guard — never save placeholder text
+    const BLOCKED = ["Transcribing…","Transcribing...",""];
     if(confirmType==="task") {
+      if(BLOCKED.includes(taskDraft.title?.trim())) return;
       if(taskDraft._multiTasks && taskDraft._multiTasks.length > 1) {
         // Create multiple tasks from AI response
         taskDraft._multiTasks.forEach(t => {
@@ -989,51 +1064,68 @@ const CaptureModal = ({
 
       {/* CHOOSE — transcript shown, then action buttons */}
       {step==="choose"&& <div>
-        {/* Transcript box — displays cleaned text, editable, copyable */}
-        <div style={{background:"var(--bg)",borderRadius:10,padding:"12px 14px",marginBottom:4,position:"relative"}}>
-          <div style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5,marginBottom:5,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span>Transcript {text?"":"— nothing captured"}</span>
-            <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {text&& <CopyBtn text={cleanTranscript(text)}/>}
-              <button onClick={()=>setEditing(e=>!e)} style={{fontSize:11.5,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500}}>
-                {editing?"Done":"Edit"}
-              </button>
+
+        {/* LOADING STATE — while transcribing */}
+        {isTranscribing
+          ? <div style={{padding:"32px 16px",textAlign:"center"}}>
+              <div style={{fontSize:15,fontWeight:600,color:"var(--teal2)",animation:"pulse 1.2s ease-in-out infinite"}}>Transcribing…</div>
+              <div style={{fontSize:12,color:"var(--text3)",marginTop:8}}>{Math.floor(transcriptTimer/60)}:{String(transcriptTimer%60).padStart(2,"0")}</div>
             </div>
-          </div>
-          {editing
-            ? <textarea className="fta w-full" style={{minHeight:80,fontSize:13,background:"#fff"}} value={text} onChange={e=>setText(e.target.value)} autoFocus/>
-            : <p style={{fontSize:13.5,color:text?"var(--text)":"var(--text3)",lineHeight:1.75,whiteSpace:"pre-wrap",fontStyle:text?"normal":"italic"}}>
-                {text?cleanTranscript(text):"Nothing recorded — tap Edit to type"}
-              </p>
-          }
-          <div style={{fontSize:11,color:"var(--text3)",marginTop:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{color:"var(--text3)",fontStyle:"italic"}}>Copy text to paste anywhere.</span>
-            <span>{fmt(timer)} recorded</span>
-          </div>
-        </div>
-        <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.6,marginBottom:10,marginTop:14}}>What is this?</div>
 
-        {/* REMINDER — saves instantly */}
-        <button onClick={saveThoughtDump} style={{
-          display:"flex",alignItems:"center",gap:14,padding:"18px 18px",
-          borderRadius:14,border:"2px solid var(--amber)",background:"var(--amber-bg)",
-          cursor:"pointer",transition:"all .13s",fontFamily:"'Inter',sans-serif",
-          width:"100%",textAlign:"left",marginBottom:10,
-          boxShadow:"0 2px 12px rgba(245,158,11,.15)"
-        }}
-          onMouseEnter={e=>e.currentTarget.style.background="#FEF3C7"}
-          onMouseLeave={e=>e.currentTarget.style.background="var(--amber-bg)"}
-        >
-          <span style={{fontSize:28,flexShrink:0}}>🔔</span>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:800,fontSize:15,color:"var(--text)"}}>Reminder</div>
-            <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>Saves instantly — no typing needed. Use this while driving.</div>
-          </div>
-          <div style={{background:"var(--amber)",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:11.5,fontWeight:700,flexShrink:0}}>SAVE NOW</div>
-        </button>
+          /* ERROR STATE */
+          : transcriptError
+          ? <div style={{textAlign:"center",padding:"24px 16px"}}>
+              <div style={{fontSize:28,marginBottom:8}}>⚠️</div>
+              <div style={{fontSize:14,fontWeight:700,color:"var(--red)",marginBottom:6}}>Transcription failed</div>
+              <div style={{fontSize:13,color:"var(--text3)",marginBottom:16}}>Could not reach the server. Check your connection and try again.</div>
+              <button className="btn btn-ghost" onClick={startRec}>Try Again</button>
+            </div>
 
-        <ActionBtn emoji="✅" label="Task" sub="Something to action — AI pre-fills title, priority, job link" color="var(--blue)" bg="var(--blue-l)" onClick={()=>pickAction("task")}/>
-        <ActionBtn emoji="🏗️" label="New Job" sub="New job site — AI extracts client, address, scope" color="var(--teal)" bg="var(--teal-l)" onClick={()=>pickAction("job")}/>
+          /* READY STATE — transcript complete */
+          : <>
+              <div style={{background:"var(--bg)",borderRadius:10,padding:"12px 14px",marginBottom:4,position:"relative"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.5,marginBottom:5,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span>Transcript</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    {text&& <CopyBtn text={cleanTranscript(text)}/>}
+                    <button onClick={()=>setEditing(e=>!e)} style={{fontSize:11.5,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500}}>
+                      {editing?"Done":"Edit"}
+                    </button>
+                  </div>
+                </div>
+                {editing
+                  ? <textarea className="fta w-full" style={{minHeight:80,fontSize:13,background:"#fff"}} value={text} onChange={e=>setText(e.target.value)} autoFocus/>
+                  : <p style={{fontSize:13.5,color:text?"var(--text)":"var(--text3)",lineHeight:1.75,whiteSpace:"pre-wrap",fontStyle:text?"normal":"italic"}}>
+                      {text?cleanTranscript(text):"Nothing recorded — tap Edit to type"}
+                    </p>
+                }
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{color:"var(--text3)",fontStyle:"italic"}}>Copy text to paste anywhere.</span>
+                  <span>{fmt(timer)} recorded</span>
+                </div>
+              </div>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:.6,marginBottom:10,marginTop:14}}>What is this?</div>
+              <button onClick={saveThoughtDump} style={{
+                display:"flex",alignItems:"center",gap:14,padding:"18px 18px",
+                borderRadius:14,border:"2px solid var(--amber)",background:"var(--amber-bg)",
+                cursor:"pointer",transition:"all .13s",fontFamily:"'Inter',sans-serif",
+                width:"100%",textAlign:"left",marginBottom:10,
+                boxShadow:"0 2px 12px rgba(245,158,11,.15)"
+              }}
+                onMouseEnter={e=>e.currentTarget.style.background="#FEF3C7"}
+                onMouseLeave={e=>e.currentTarget.style.background="var(--amber-bg)"}
+              >
+                <span style={{fontSize:28,flexShrink:0}}>🔔</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:15,color:"var(--text)"}}>Reminder</div>
+                  <div style={{fontSize:12,color:"var(--text3)",marginTop:2}}>Saves instantly — no typing needed. Use this while driving.</div>
+                </div>
+                <div style={{background:"var(--amber)",color:"#fff",borderRadius:8,padding:"5px 10px",fontSize:11.5,fontWeight:700,flexShrink:0}}>SAVE NOW</div>
+              </button>
+              <ActionBtn emoji="✅" label="Task" sub="Something to action — AI pre-fills title, priority, job link" color="var(--blue)" bg="var(--blue-l)" onClick={()=>pickAction("task")}/>
+              <ActionBtn emoji="🏗️" label="New Job" sub="New job site — AI extracts client, address, scope" color="var(--teal)" bg="var(--teal-l)" onClick={()=>pickAction("job")}/>
+            </>
+        }
       </div>}
 
       {/* CONFIRM — shows immediately, AI updates fields in background */}
