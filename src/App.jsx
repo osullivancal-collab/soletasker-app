@@ -897,70 +897,65 @@ const CaptureModal = ({
 
   const saveNote = () => { onSaveNote({id:`N${uid()}`,text:cleanTranscript(text),date:TODAY,source:mode}); onClose(); };
 
-  // User picks Task/Job/Reminder → use parsedResult from server → confirm form appears
   const pickAction = (type) => {
     const raw = text.trim();
-    // HARD GUARD — never create anything if transcription is still running or text is missing
     if(isTranscribing) return;
     if(!raw || raw.length < 3) return;
 
     const clean = cleanTranscript(raw);
-    setConfirmType(type);
 
-    // Parse due date from transcript locally
     const parseDue = (t) => {
       const s = t.toLowerCase();
-      const d = new Date();
+      const d = new Date(); d.setHours(0,0,0,0);
       if(/\btomorrow\b/.test(s)){d.setDate(d.getDate()+1);return d.toISOString().split("T")[0];}
       if(/\bnext week\b/.test(s)){d.setDate(d.getDate()+7);return d.toISOString().split("T")[0];}
-      if(/\bend of week\b|\bfriday\b/.test(s)){const day=d.getDay();d.setDate(d.getDate()+(5-day+7)%7||7);return d.toISOString().split("T")[0];}
+      if(/\bend of week\b|\bfriday\b/.test(s)){const day=d.getDay();const diff=(5-day+7)%7||7;d.setDate(d.getDate()+diff);return d.toISOString().split("T")[0];}
       if(/\btoday\b|\bnow\b/.test(s)){return d.toISOString().split("T")[0];}
       return null;
     };
 
-    // Remove filler phrases from title
-    const cleanTitle = (t) => t
-      .replace(/\b(create a task|add a task|new task|task for me|don't forget|dont forget|reminder to|remind me to|remind me|please|just|me\.?|urgent\.?|priority\s*\d+\.?)\b/gi,"")
-      .replace(/[,\.]+$/,"").replace(/\s{2,}/g," ").trim();
-
-    // Priority — explicit number wins over "urgent"
     const parsePriority = (t) => {
       const s = t.toLowerCase();
-      if(/priority\s*(3|three)|p3|\blow priority\b/.test(s)) return "P3";
-      if(/priority\s*(2|two)|p2/.test(s)) return "P2";
+      if(/priority\s*(3|three)|p3|\blow priority\b|\bwhenever\b/.test(s)) return "P3";
+      if(/priority\s*(2|two)|p2|\bmedium\b/.test(s)) return "P2";
       if(/priority\s*(1|one)|p1|\burgent\b|\basap\b/.test(s)) return "P1";
       return "P2";
     };
+
+    const cleanTitle = (t) => t
+      .replace(/\b(create a task|add a task|new task|task for me|don't forget|dont forget|reminder to|remind me to|remind me|please|just)\b/gi,"")
+      .replace(/\b(urgent|asap|low priority|high priority|priority\s*(one|two|three|\d+)|p[123])\b/gi,"")
+      .replace(/\b(tomorrow|today|next week|end of week|friday|monday|this week|now)\b/gi,"")
+      .replace(/,?\s*priority\s*\d*/gi,"")
+      .replace(/[,\.]+$/,"").replace(/\s{2,}/g," ").trim();
 
     const inferredDue = parseDue(raw);
     const inferredPriority = parsePriority(raw);
     const titleClean = cleanTitle(clean);
 
+    setConfirmType(type);
     setTaskDraft({title:titleClean||clean, priority:inferredPriority, assignedTo:"Me", jobId:"", dueDate:inferredDue||"", notes:""});
     setJobDraft({name:"", client:"", address:"", scope:clean, notes:""});
     setReminderDraft({title:titleClean||clean, notes:"", dueDate:inferredDue||"", dueTime:"", linkedJobId:""});
-    setStep("confirm");
 
     const r = parsedResult;
     if(r) {
       const aiTasks = Array.isArray(r.tasks) && r.tasks.length > 0 && typeof r.tasks[0]==="object" ? r.tasks : null;
-
-      // Conservative job link — only if high confidence from server
       const safeJobId = (r.job_id && r.confidence !== "low") ? r.job_id : "";
-
-      // Explicit priority number in transcript always wins
-      const hasExplicitPriority = /priority\s*[123]|p[123]/i.test(raw);
+      const hasExplicitPriority = /priority\s*[123one two three]|p[123]|urgent|asap/i.test(raw);
       const finalPriority = hasExplicitPriority ? inferredPriority : (r.priority||inferredPriority);
+      const aiTitle = r.task_title ? cleanTitle(r.task_title) : titleClean;
+      const aiDue = r.reminder_date && r.reminder_date >= TODAY ? r.reminder_date : inferredDue||"";
 
       if(aiTasks && aiTasks.length > 1) {
         setTaskDraft(p=>({...p, _multiTasks:aiTasks, jobId:safeJobId}));
       } else {
         setTaskDraft(p=>({...p,
-          title: r.task_title ? cleanTitle(r.task_title) : p.title,
+          title: aiTitle||p.title,
           priority: finalPriority,
           assignedTo: r.assigned_to||p.assignedTo,
           jobId: safeJobId,
-          dueDate: r.reminder_date||inferredDue||p.dueDate,
+          dueDate: aiDue,
           notes: r.notes||p.notes
         }));
       }
@@ -968,10 +963,12 @@ const CaptureModal = ({
       setReminderDraft(p=>({...p,
         title: r.reminder_text ? cleanTitle(r.reminder_text) : p.title,
         notes: r.notes||p.notes,
-        dueDate: r.reminder_date||inferredDue||p.dueDate,
+        dueDate: aiDue||p.dueDate,
         linkedJobId: safeJobId
       }));
     }
+
+    setStep("confirm");
   };
 
   const doSave = () => {
