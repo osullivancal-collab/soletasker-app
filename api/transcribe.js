@@ -22,7 +22,7 @@ async function transcribeAudio(buffer, mimeType) {
   const formData = new FormData();
   const audioBlob = new Blob([buffer], { type: mime });
   formData.append("file", audioBlob, filename);
-  formData.append("model", "gpt-4o-mini-transcribe");
+  formData.append("model", "whisper-1");
   formData.append("language", "en");
   formData.append("prompt", "Tradie voice note. Australian English. May include: P1, P2, priority one, priority two, address, job, task, reminder, SWMS, Part P, EIC, switchboard, invoice, certificate, builder, sparky, apprentice.");
 
